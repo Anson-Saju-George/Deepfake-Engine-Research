@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Environments
+.env
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Data and large generated assets
+datasets/images/ai-generated-images-vs-real-images/
+datasets/images/cifake/
+datasets/videos/celeb-df-v2/
+datasets/videos/faceforensics++/
+datasets/videos/real-ai-videos/
+
+# Old directories
+graphs_old/
+train_old/
+/temp/
+
+# Training outputs
+train/image/
+train/video/
+*.pth
+*.pt
+*.ckpt
+*.onnx
+
+# Local caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+
+# Ignoring classified files
+# Keep the actual data pipeline, preprocessing internals, and research structure visible.
+# Hide only private tracking-style notes.
+Progress.md

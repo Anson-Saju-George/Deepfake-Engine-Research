@@ -1,0 +1,278 @@
+(torch) PS D:\main-projects\DEEPFAKE_MODEL-DS-APP\deep-fake-model> python -m data.dataset_analyzer
+
+🔍 Scanning datasets...
+Total samples: 192028
+
+=== REAL DATASET STATS (FILES ON DISK) ===
+
+[Images]
+
+Dataset: ai-generated-images-vs-real-images
+Total files: 60000
+   test | fake: 6000
+   test | real: 6000
+  train | fake: 24000
+  train | real: 24000
+
+Dataset: cifake
+Total files: 120000
+   test | fake: 10000
+   test | real: 10000
+  train | fake: 50000
+  train | real: 50000
+
+[Videos]
+
+Dataset: celeb-df-v2
+Total files: 6533
+  Celeb-fake | fake: 5643
+  Celeb-real | real: 590
+  YouTube-real | real: 300
+
+Dataset: faceforensics++
+Total files: 5429
+  fake | fake: 4066
+  real | real: 1363
+
+Dataset: real-ai-videos
+Total files: 66
+  fake | fake: 33
+  real | real: 33
+
+=== DATALOADER DISCOVERY STATS ===
+Total samples discovered: 192028
+By dtype: {'image': 180000, 'video': 12028}
+By label: fake=99742, real=92286
+
+Dataset: ai-generated-images-vs-real-images
+Total discovered: 60000
+  fake: 30000
+  real: 30000
+
+Dataset: celeb-df-v2
+Total discovered: 6533
+  fake: 5643
+  real: 890
+
+Dataset: cifake
+Total discovered: 120000
+  fake: 60000
+  real: 60000
+
+Dataset: faceforensics++
+Total discovered: 5429
+  fake: 4066
+  real: 1363
+
+Dataset: real-ai-videos
+Total discovered: 66
+  fake: 33
+  real: 33
+
+=== REAL VS DATALOADER CHECK ===
+      OK | ai-generated-images-vs-real-images | on_disk=  60000 | loader=  60000
+      OK | celeb-df-v2                    | on_disk=   6533 | loader=   6533
+      OK | cifake                         | on_disk= 120000 | loader= 120000
+      OK | faceforensics++                | on_disk=   5429 | loader=   5429
+      OK | real-ai-videos                 | on_disk=     66 | loader=     66
+
+Loader discovery matches configured on-disk stats.
+(torch) PS D:\main-projects\DEEPFAKE_MODEL-DS-APP\deep-fake-model>
+
+
+------------------------------------------------------------------------------------------------------------------------------
+
+
+(torch) PS D:\main-projects\DEEPFAKE_MODEL-DS-APP\deep-fake-model> python -m data.dataset_run --num-workers 16
+
+🔍 Scanning datasets...
+Total samples: 192028
+
+=== DATASET RUN ===
+Root: datasets
+Filter dtype: all
+Samples to validate: 192028
+Workers: 16
+Validating samples: 100%|████████████████████████████████████████████████████████████████████████████| 192028/192028 [15:01<00:00, 213.07it/s] 
+
+=== VALIDATION SUMMARY ===
+Readable samples : 192016
+Failed samples   : 12
+Readable by dtype: {'image': 179988, 'video': 12028}
+Failed by dtype  : {'image': 12}
+
+=== FAILURES BY DATASET ===
+ai-generated-images-vs-real-images: 12
+
+=== FAILURE SAMPLES (first 50) ===
+[image] label=1 | datasets\images\ai-generated-images-vs-real-images\test\real\5197.jpg
+  error: OSError: image file is truncated (6 bytes not processed)
+[image] label=1 | datasets\images\ai-generated-images-vs-real-images\test\real\5325.jpg
+  error: OSError: image file is truncated (3 bytes not processed)
+[image] label=1 | datasets\images\ai-generated-images-vs-real-images\test\real\5879.jpg
+  error: OSError: Truncated File Read
+[image] label=0 | datasets\images\ai-generated-images-vs-real-images\train\fake\12854.jpg
+  error: OSError: broken data stream when reading image file
+[image] label=0 | datasets\images\ai-generated-images-vs-real-images\train\fake\8022.jpg
+  error: OSError: broken data stream when reading image file
+[image] label=1 | datasets\images\ai-generated-images-vs-real-images\train\real\0038.jpg
+  error: OSError: image file is truncated (0 bytes not processed)
+[image] label=1 | datasets\images\ai-generated-images-vs-real-images\train\real\12094.jpg
+  error: OSError: image file is truncated (6 bytes not processed)
+[image] label=1 | datasets\images\ai-generated-images-vs-real-images\train\real\13021.jpg
+  error: OSError: image file is truncated (0 bytes not processed)
+[image] label=1 | datasets\images\ai-generated-images-vs-real-images\train\real\15963.jpg
+  error: OSError: image file is truncated (2 bytes not processed)
+[image] label=1 | datasets\images\ai-generated-images-vs-real-images\train\real\16011.jpg
+  error: OSError: image file is truncated (4 bytes not processed)
+[image] label=1 | datasets\images\ai-generated-images-vs-real-images\train\real\20964.jpg
+  error: OSError: image file is truncated (6 bytes not processed)
+[image] label=1 | datasets\images\ai-generated-images-vs-real-images\train\real\21610.jpg
+  error: OSError: image file is truncated (1 bytes not processed)
+(torch) PS D:\main-projects\DEEPFAKE_MODEL-DS-APP\deep-fake-model> 
+
+
+------------------------------------------------------------------------------------------------------------------------------
+
+
+(torch) PS D:\main-projects\DEEPFAKE_MODEL-DS-APP\deep-fake-model> python -m data.dataset_fix --action delete --num-workers 16
+
+🔍 Scanning datasets...
+Total samples: 192028
+
+=== DATASET RUN ===
+Root: datasets
+Filter dtype: all
+Samples to validate: 192028
+Workers: 16
+Validating samples: 100%|████████████████████████████████████████████████████████████████████████████| 192028/192028 [15:00<00:00, 213.17it/s] 
+
+=== VALIDATION SUMMARY ===
+Readable samples : 192016
+Failed samples   : 12
+Readable by dtype: {'image': 179988, 'video': 12028}
+Failed by dtype  : {'image': 12}
+
+=== FAILURES BY DATASET ===
+ai-generated-images-vs-real-images: 12
+
+=== FAILURE SAMPLES (first 50) ===
+[image] label=1 | datasets\images\ai-generated-images-vs-real-images\test\real\5197.jpg
+  error: OSError: image file is truncated (6 bytes not processed)
+[image] label=1 | datasets\images\ai-generated-images-vs-real-images\test\real\5325.jpg
+  error: OSError: image file is truncated (3 bytes not processed)
+[image] label=1 | datasets\images\ai-generated-images-vs-real-images\test\real\5879.jpg
+  error: OSError: Truncated File Read
+[image] label=0 | datasets\images\ai-generated-images-vs-real-images\train\fake\12854.jpg
+  error: OSError: broken data stream when reading image file
+[image] label=0 | datasets\images\ai-generated-images-vs-real-images\train\fake\8022.jpg
+  error: OSError: broken data stream when reading image file
+[image] label=1 | datasets\images\ai-generated-images-vs-real-images\train\real\0038.jpg
+  error: OSError: image file is truncated (0 bytes not processed)
+[image] label=1 | datasets\images\ai-generated-images-vs-real-images\train\real\12094.jpg
+  error: OSError: image file is truncated (6 bytes not processed)
+[image] label=1 | datasets\images\ai-generated-images-vs-real-images\train\real\13021.jpg
+  error: OSError: image file is truncated (0 bytes not processed)
+[image] label=1 | datasets\images\ai-generated-images-vs-real-images\train\real\15963.jpg
+  error: OSError: image file is truncated (2 bytes not processed)
+[image] label=1 | datasets\images\ai-generated-images-vs-real-images\train\real\16011.jpg
+  error: OSError: image file is truncated (4 bytes not processed)
+[image] label=1 | datasets\images\ai-generated-images-vs-real-images\train\real\20964.jpg
+  error: OSError: image file is truncated (6 bytes not processed)
+[image] label=1 | datasets\images\ai-generated-images-vs-real-images\train\real\21610.jpg
+  error: OSError: image file is truncated (1 bytes not processed)
+
+=== FIX ACTION ===
+Action: delete
+Failure count: 12
+
+=== FIX SUMMARY ===
+Deleted    : 12
+Quarantined: 0
+Failed ops : 0
+(torch) PS D:\main-projects\DEEPFAKE_MODEL-DS-APP\deep-fake-model> 
+
+
+------------------------------------------------------------------------------------------------------------------------------
+
+
+(torch) PS D:\main-projects\DEEPFAKE_MODEL-DS-APP\deep-fake-model> python -m data.dataset_analyzer                
+
+🔍 Scanning datasets...
+Total samples: 192016
+
+=== REAL DATASET STATS (FILES ON DISK) ===
+
+[Images]
+
+Dataset: ai-generated-images-vs-real-images
+Total files: 59988
+   test | fake: 6000
+   test | real: 5997
+  train | fake: 23998
+  train | real: 23993
+
+Dataset: cifake
+Total files: 120000
+   test | fake: 10000
+   test | real: 10000
+  train | fake: 50000
+  train | real: 50000
+
+[Videos]
+
+Dataset: celeb-df-v2
+Total files: 6533
+  Celeb-fake | fake: 5643
+  Celeb-real | real: 590
+  YouTube-real | real: 300
+
+Dataset: faceforensics++
+Total files: 5429
+  fake | fake: 4066
+  real | real: 1363
+
+Dataset: real-ai-videos
+Total files: 66
+  fake | fake: 33
+  real | real: 33
+
+=== DATALOADER DISCOVERY STATS ===
+Total samples discovered: 192016
+By dtype: {'image': 179988, 'video': 12028}
+By label: fake=99740, real=92276
+
+Dataset: ai-generated-images-vs-real-images
+Total discovered: 59988
+  fake: 29998
+  real: 29990
+
+Dataset: celeb-df-v2
+Total discovered: 6533
+  fake: 5643
+  real: 890
+
+Dataset: cifake
+Total discovered: 120000
+  fake: 60000
+  real: 60000
+
+Dataset: faceforensics++
+Total discovered: 5429
+  fake: 4066
+  real: 1363
+
+Dataset: real-ai-videos
+Total discovered: 66
+  fake: 33
+  real: 33
+
+=== REAL VS DATALOADER CHECK ===
+      OK | ai-generated-images-vs-real-images | on_disk=  59988 | loader=  59988
+      OK | celeb-df-v2                    | on_disk=   6533 | loader=   6533
+      OK | cifake                         | on_disk= 120000 | loader= 120000
+      OK | faceforensics++                | on_disk=   5429 | loader=   5429
+      OK | real-ai-videos                 | on_disk=     66 | loader=     66
+
+Loader discovery matches configured on-disk stats.
+(torch) PS D:\main-projects\DEEPFAKE_MODEL-DS-APP\deep-fake-model>
