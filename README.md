@@ -4,13 +4,6 @@
 
 > Research-grade image and video deepfake detection pipeline with protocol-aware loading, dataset-audit tooling, and reproducible experiment tracking.
 
-## Banner Prompt
-
-Use this prompt to generate the repository banner:
-
-```text
-Create a wide modern research banner for a deepfake detection project. Show a split visual language between image forensics and video forensics, with one side featuring layered synthetic portrait analysis and the other side featuring temporal video frame sequences and forensic overlays. Add subtle neural network grid patterns, detection bounding boxes, waveform-like temporal traces, patch tokens, feature maps, and clean research-dashboard typography. Style should feel premium, technical, cinematic, and recruiter-impressive, with crisp contrast, blue-cyan and amber accents, dark graphite background, and a polished machine learning lab aesthetic. Include space for the title “DeepFake Detection Research Pipeline” and subtitle “Protocol-Aware Image and Video Forensics”. No logos, no watermarks, no clutter, no cartoon look.
-```
 
 ## Overview
 
