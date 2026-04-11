@@ -1,3 +1,5 @@
+![DeepFake Detection Research Pipeline Banner](images/Banner.png)
+
 # DeepFake Detection Research Pipeline
 
 > Research-grade image and video deepfake detection pipeline with protocol-aware loading, dataset-audit tooling, and reproducible experiment tracking.
@@ -87,6 +89,8 @@ It is not just “a loader.” It is a protocol-aware experimental control layer
 - correct for identity-sensitive video datasets
 - flexible enough for frame-derived ablations
 - explicit enough to explain in a research paper
+
+![DeepFake Detection Research Pipeline Banner](images/Deepfake_detection_research_pipeline_overview.png)
 
 ## Research Workflow
 
