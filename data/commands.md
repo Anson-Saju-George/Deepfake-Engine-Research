@@ -4,7 +4,8 @@ This file records the dataset and data-pipeline commands that are currently usab
 
 Training-side commands now live separately in:
 
-- `train/commands.md`
+- `train/image/image_commands.md`
+- `train/video/video_commands.md`
 
 Old dataset helper scripts that were previously under `datasets/` have been moved to `datasets/temp/`. They should be treated as old / legacy utilities, not as the primary active data pipeline.
 
@@ -355,28 +356,28 @@ The new top-level image training path is now active.
 Image pipeline smoke test:
 
 ```bash
-python -m train.image_simulate
+python -m train.image.simulate_image_train
 ```
 
 Single-dataset smoke tests:
 
 ```bash
-python -m train.image_simulate --datasets cifake
-python -m train.image_simulate --datasets ai-generated-images-vs-real-images
+python -m train.image.simulate_image_train --datasets cifake
+python -m train.image.simulate_image_train --datasets ai-generated-images-vs-real-images
 ```
 
 ViT image trainer menu:
 
 ```bash
-python -m train.run_image_vit
+python -m train.image.run_image_vit
 ```
 
 Direct ViT image trainer examples:
 
 ```bash
-python -m train.run_image_vit --exp IMG-EXP-01 --dataset-scope cifake
-python -m train.run_image_vit --exp IMG-EXP-01 --dataset-scope ai_gen
-python -m train.run_image_vit --exp IMG-EXP-01 --dataset-scope image_combined
+python -m train.image.run_image_vit --exp IMG-EXP-01 --dataset-scope cifake
+python -m train.image.run_image_vit --exp IMG-EXP-01 --dataset-scope ai_gen
+python -m train.image.run_image_vit --exp IMG-EXP-01 --dataset-scope image_combined
 ```
 
 Implemented ViT experiment IDs:

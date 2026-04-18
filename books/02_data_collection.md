@@ -1,122 +1,197 @@
-# Data Collection
+﻿# Data Collection
 
-## Active Sources
+## What This Stage Means
 
-### Images
+Data collection is the stage where the project defines what raw material exists, what form it takes, and what those datasets actually represent.
+
+In a research project, this stage is not just an inventory list. It is where the study defines:
+
+- what the model is allowed to learn from
+- how broad or narrow the target domain is
+- how comparable the datasets are
+- what semantic caveats will follow the work into training and evaluation
+
+## What Is Collected In This Repo
+
+The repository currently uses two image datasets and three video datasets as the cleaned raw baseline.
+
+Image datasets:
 
 - `cifake`
 - `ai-generated-images-vs-real-images`
 
-### Videos
+Video datasets:
 
 - `celeb-df-v2`
 - `faceforensics++`
 - `real-ai-videos`
 
-## Current On-Disk Tree Summary
+The active on-disk roots are:
 
-Verified top-level datasets currently present:
+- `datasets/images/...`
+- `datasets/videos/...`
 
-- `datasets/images/ai-generated-images-vs-real-images`
-- `datasets/images/cifake`
-- `datasets/videos/celeb-df-v2`
-- `datasets/videos/faceforensics++`
-- `datasets/videos/real-ai-videos`
-
-Optional or derived roots that may appear depending on preprocessing state:
+Optional derived roots may also appear later:
 
 - `datasets/preprocessed_frames`
 - `datasets/images/faceforensics_frames`
 - `video-frames`
 - `frames`
 
-## Current Dataset Snapshot
+These derived roots are not part of the core raw dataset baseline unless explicitly generated and reported.
 
-Latest cleaned raw dataset state:
+## Current Raw Dataset Snapshot
+
+Latest cleaned raw totals:
 
 - total raw samples: `192,016`
 - images: `179,988`
 - videos: `12,028`
 - labels: `99,740 fake`, `92,276 real`
 
-Current verified image datasets:
+Image side:
 
 - `ai-generated-images-vs-real-images`: `59,988`
 - `cifake`: `120,000`
 
-Current verified video datasets:
+Video side:
 
 - `celeb-df-v2`: `6,533`
 - `faceforensics++`: `5,429`
 - `real-ai-videos`: `66`
 
-## Dataset Structure Notes
-
-### `ai-generated-images-vs-real-images`
-
-- structure: `train/{fake,real}` and `test/{fake,real}`
-- latest counts:
-- `train/fake`: `23,998`
-- `train/real`: `23,993`
-- `test/fake`: `6,000`
-- `test/real`: `5,997`
+## Why These Datasets Matter
 
 ### `cifake`
 
-- structure: `train/{FAKE,REAL}` and `test/{FAKE,REAL}`
-- counts:
-- `train/FAKE`: `50,000`
-- `train/REAL`: `50,000`
-- `test/FAKE`: `10,000`
-- `test/REAL`: `10,000`
+What it is:
+
+- a large image benchmark with a clean fake/real structure
+
+Why it matters:
+
+- it provides a strong image-domain baseline
+- it is large enough to support stable architecture comparison
+- it is balanced enough to reduce confusion between model weakness and class skew
+
+### `ai-generated-images-vs-real-images`
+
+What it is:
+
+- another image-domain synthetic-vs-real benchmark with a different corpus profile
+
+Why it matters:
+
+- it tests generalization beyond one image dataset
+- it helps reveal whether a model is learning transferable image cues or only dataset-specific artifacts
 
 ### `celeb-df-v2`
 
-- structure: flat class folders
-- `Celeb-fake`: `5,643`
-- `Celeb-real`: `590`
-- `YouTube-real`: `300`
+What it is:
+
+- a face-manipulation video dataset with clear fake-heavy class skew
+
+Why it matters:
+
+- it is one of the main raw-video benchmarks in the repo
+- it stresses identity-aware splitting and honest handling of imbalance
 
 ### `faceforensics++`
 
-- structure used by loader: nested `fake/**` and `real/**`
-- fake total: `4,066`
-- real total: `1,363`
+What it is:
+
+- a major manipulated-face video corpus with nested structure and substantial clip length
+
+Why it matters:
+
+- it provides a second major raw-video benchmark
+- it is important for studying both spatial and spatial+temporal learning on manipulated videos
 
 ### `real-ai-videos`
 
-- structure: flat class folders
-- `fake`: `33`
-- `real`: `33`
+What it is:
 
-## Collection Structure
+- a very small video dataset with balanced file counts
 
-The repo expects datasets under `datasets/` with modality-specific subtrees:
+Why it matters:
 
-- `datasets/images/...`
-- `datasets/videos/...`
+- it can support auxiliary experiments
+- it should not be allowed to dominate conclusions because it is too small to stabilize the overall video story
 
-Derived frame folders may also exist under:
+## Why Collection Cannot Be Treated As Neutral
 
-- `datasets/preprocessed_frames/...`
-- `video-frames/...`
+Deepfake datasets are not semantically identical.
 
-## Collection Principles
+Image-side `fake` often means:
 
-- raw dataset layout is preserved where possible
-- source dataset naming conventions are used for class and identity inference
-- derived frame folders are treated as secondary artifacts, not as original source corpora
+- fully synthetic imagery
 
-## Label Semantics
+Video-side `fake` often means:
 
-Global binary convention in code and docs:
+- manipulated real footage
+- face swaps
+- other temporal manipulation artifacts
 
-- `0 = fake`
-- `1 = real`
+This means a single binary label does not guarantee one unified forensic concept.
 
-Important semantic caveat:
+The collection stage therefore already creates an important research caveat:
 
-- image datasets here are largely synthetic-vs-real tasks
-- video datasets here are largely manipulation-vs-real tasks
+- `fake` is not perfectly homogeneous across all datasets in the repo
 
-These should not be casually collapsed into one core benchmark claim without protocol-level separation.
+## Structure Of The Collected Data
+
+Image datasets:
+
+- generally use source split folders such as `train` and `test`
+- are consumed as image-domain spatial tasks
+
+Video datasets:
+
+- may use flat class folders
+- may use deeper nested structures
+- are consumed as raw video rather than as fully materialized frame corpora by default
+
+Derived frame folders:
+
+- when present, they are secondary artifacts
+- they are not the same thing as the original raw datasets
+
+## Collection Principles Used In This Project
+
+The repo follows these collection principles:
+
+- preserve raw dataset layout where possible
+- keep modality roots separate
+- do not redefine image and video as one default corpus
+- treat derived frame folders as downstream artifacts, not as original source data
+- document label semantics honestly
+
+## Collection Risks That Must Be Admitted
+
+The collection stage already contains research risks.
+
+Source-style bias:
+
+- a model can learn dataset style instead of forensic evidence
+
+Semantic mismatch:
+
+- `fake` may mean synthetic generation in one dataset and manipulation in another
+
+Dataset dominance:
+
+- larger datasets can dominate combined training behavior
+
+Small auxiliary-set fragility:
+
+- tiny datasets can look informative but are statistically weak on their own
+
+## What The Thesis Or Paper Should State
+
+The final write-up should clearly state:
+
+- which datasets are image datasets and which are video datasets
+- how many cleaned raw samples exist
+- that derived frame folders are optional and secondary
+- that label semantics differ across dataset families
+- that the repository intentionally separates image and video protocols to respect those differences

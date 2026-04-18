@@ -1,69 +1,171 @@
-# Data Cleaning & Preprocessing
+﻿# Data Cleaning & Preprocessing
 
-## Cleaning History
+## What This Stage Means
+
+Cleaning and preprocessing are the stages where the raw corpus is checked for readability, corrected where possible, and transformed into a form that the training pipeline can use consistently.
+
+In this repository, this stage is especially important because:
+
+- corrupted files existed in the collected data
+- video preprocessing can generate large derived artifacts
+- weak preprocessing choices can quietly change the meaning of the experiment
+
+## Cleaning History In This Repo
+
+Two historical cleanup facts matter and should remain part of the permanent record.
+
+Image cleanup:
 
 - `12` corrupted images were removed from `ai-generated-images-vs-real-images`
-- `3` bad videos were removed historically due to old `moov`-type issues
 
-Validation evidence already documented in the dataset audit trail:
+Historical video cleanup:
 
-- pre-image-cleanup total: `192,028`
-- post-image-cleanup total: `192,016`
-- the `12` detected failures were image-only failures from `ai-generated-images-vs-real-images`
-- there is no current evidence from the latest validation pass of additional unreadable videos in the checked `12,028` raw video files
+- `3` bad videos had already been deleted earlier due to old `moov`-type or metadata issues
 
-## Active Preprocessing Path
+Pre-cleanup analyzer state:
 
-- `proc/pre_process_videos.py`
+- total raw samples: `192,028`
 
-This extractor:
+Post-cleanup analyzer state:
 
-- discovers videos via `DatasetBuilder`
-- writes continuation-safe frame folders
-- stores per-folder extraction manifests
-- supports full-frame extraction and bounded extraction modes
+- total raw samples: `192,016`
 
-Current accepted interpretation:
+These numbers matter because they show that the current benchmark inventory is the result of an explicit cleaning process, not just whatever happened to remain on disk.
 
-- raw-video training does not require frame materialization
-- frame extraction is an optional derived-data step for frame-only or auxiliary experiments
-- the active extractor is continuation-safe, so reruns should skip complete outputs and refresh stale or partial ones
+## Why Cleaning Matters Here
 
-## Important Semantics
+A corrupted sample is not just a nuisance. It creates several risks:
 
-- `frame_stride=1` means every frame
-- `max_frames=None` means all eligible frames after stride
-- reruns skip complete outputs and refresh stale or partial ones
-- bounded extraction such as `--max-frames 32` or `--max-frames 64` remains the practical training-oriented option when a smaller derived frame dataset is desired
+- loader crashes during training
+- inconsistent dataset counts between disk and dataloader discovery
+- unstable preprocessing runs
+- misleading reporting if bad files are silently skipped instead of accounted for
 
-## Validation and Cleanup Tooling
+The repo therefore treats cleaning as a documented research step, not as an invisible one-off fix.
 
-Relevant active tooling:
+## Active Cleaning And Validation Tools
+
+The active tools are:
 
 - `python -m data.dataset_run`
 - `python -m data.dataset_fix`
 - `python -m data.dataset_analyzer`
 
-Operational interpretation:
+What they do:
 
-- use `dataset_run` to detect unreadable media
-- use `dataset_fix` to report, quarantine, or delete unreadable media
-- use `dataset_analyzer` after cleanup to confirm final counts and loader agreement
+- `dataset_run`
+  - validates that raw files can actually be opened and read
+- `dataset_fix`
+  - can report, quarantine, or delete unreadable files
+- `dataset_analyzer`
+  - confirms final counts and agreement between filesystem truth and loader discovery
 
-## Deferred / Rejected Routes
+## What Preprocessing Means In This Repo
 
-- GPU-specific extraction was evaluated but not adopted into the active repo
+Preprocessing in this repo has two very different meanings, and they must not be confused.
+
+Runtime preprocessing:
+
+- transforms applied during dataloader operation
+- resizing, cropping, flipping, normalization, and video-frame sampling
+
+Materialization preprocessing:
+
+- writing new derived artifacts to disk
+- mainly frame-folder extraction from raw videos
+
+The first is part of normal training behavior.
+The second is optional and should be reported separately.
+
+## Active Preprocessing Path
+
+The accepted active extractor is:
+
+- `proc/pre_process_videos.py`
+
+What it does:
+
+- discovers videos through the active `DatasetBuilder`
+- writes frame folders in a continuation-safe way
+- records extraction manifests
+- supports both bounded extraction and all-frame extraction
+
+Why this matters:
+
+- the extractor now follows the same discovery logic as the dataloader
+- preprocessing therefore stays aligned with the actual training corpus
+
+## Critical Preprocessing Semantics
+
+These terms must be understood precisely.
+
+`frame_stride=1`
+
+- means every eligible frame is kept
+- it does not mean one frame per second or one frame per minute
+
+`max_frames=None`
+
+- means no cap is applied after stride
+
+`max_frames=N`
+
+- means keep at most `N` total frames per video
+- it is not a time-based cap
+
+Continuation-safe reruns:
+
+- complete compatible frame folders are skipped
+- stale or partial frame folders are refreshed
+
+## Why Full Frame Materialization Is Not The Default
+
+This repo explicitly moved away from treating full frame extraction as mandatory.
+
+Why:
+
+- raw-video sequence loading is already supported
+- full-frame materialization can consume huge storage
+- adjacent video frames are highly redundant
+- large frame stores create additional maintenance burden
+
+Research implication:
+
+- raw-video training is the primary video path
+- frame extraction is an auxiliary branch for derived-frame experiments
+
+## Rejected Or Deferred Routes
+
+The repo evaluated hardware-accelerated extraction paths and did not adopt them as the active baseline.
+
+Why this matters:
+
+- rejected paths are part of the methodological record
+- they explain why the project stayed with the CPU/dataloader-aligned extractor
+
+Current accepted conclusion:
+
 - CPU extraction remains the accepted baseline preprocessing route
 
-## Legacy Utilities
+## Legacy Utilities And Why They Matter
 
-Old helper scripts formerly under `datasets/` were moved to `datasets/temp/` and should be treated as legacy utilities, not the active pipeline.
+Old helper scripts were moved into `datasets/temp/`.
 
-Examples retained only for traceability:
+They still matter historically because they show:
 
-- `datasets/temp/extract_ff_frames.py`
-- `datasets/temp/frame_converter.py`
-- `datasets/temp/clean_ds.py`
-- `datasets/temp/del_corrupted.py`
-- `datasets/temp/rgba_clean.py`
-- `datasets/temp/remove_audio.py`
+- earlier extraction strategies
+- earlier cleaning strategies
+- legacy dataset transformations
+
+But they should not be presented as the current canonical workflow.
+
+## What The Thesis Or Paper Should State
+
+The final write-up should clearly state:
+
+- what was cleaned
+- how many files were removed
+- that raw corpus totals changed after cleaning
+- what preprocessing is part of runtime loading
+- what preprocessing creates derived artifacts on disk
+- that frame extraction is optional in the current main methodology

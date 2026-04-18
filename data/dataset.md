@@ -94,20 +94,33 @@ The repository currently has three distinct data-layer roles. These should not b
 ### Active runtime path
 
 - `data/dataloader.py`
-- new image training entrypoints under `train/`
-- legacy video references under `train_old/`
+- active image training tree under `train/image/`
+- active video research tree under `train/video/`
+- legacy references under `train_old/`
 - raw image and raw video loading are the active default training path
 - image datasets feed image-only spatial models
 - raw video datasets feed video-only models
 - `video_only` + `single` is the spatial baseline on videos
-- `video_only` + `sequence` is the spatial+temporal path on videos
-- optional derived frame-folder loading is supported through `dtype="frame"` but is not part of the current counted baseline unless those roots are generated
+- `video_only` + `sequence` is the clip-based spatial+temporal path on videos
+- optional derived frame-folder loading is supported through `dtype="frame"`, but it is auxiliary rather than part of the main counted baseline
 - separate image and video models are the intended primary research path
-- multimodel / mixed-media training should be treated as auxiliary rather than as the main reported protocol
+- mixed-media loading should still be treated as auxiliary rather than as the main reported protocol
 - current implementation reality:
-  - `train/image_simulate.py` is the active image pipeline smoke-test entrypoint
-  - `train/image_train_vit.py` and `train/run_image_vit.py` are the current implemented new-tree image trainer entrypoints
-  - new-tree video execution is not implemented yet; video planning is documented in `train/video_model.py` and `train/video_config.md`
+  - `train/image/simulate_image_train.py` is the active image smoke-test entrypoint
+  - active image runner families now exist for:
+    - `train/image/run_image_vit.py`
+    - `train/image/run_image_convnext.py`
+    - `train/image/run_image_swin.py`
+    - `train/image/run_image_deit.py`
+    - `train/image/run_image_convnextv2.py`
+    - `train/image/run_image_maxvit.py`
+    - `train/image/run_image_eva.py`
+  - active video registry and runner surfaces now exist under:
+    - `train/video/video_models.py`
+    - `train/video/spa/`
+    - `train/video/tmp/`
+    - `train/video/st/`
+  - current video execution still routes through smoke validation rather than the final migrated research trainer
 
 ### Audit and validation path
 
@@ -464,6 +477,25 @@ Current image transforms:
 - `ToTensor()`
 - ImageNet normalization
 
+Transform rationale:
+
+- `RandomResizedCrop(224, scale=(0.9, 1.0))`
+  - injects moderate spatial variation while staying close to the source framing
+  - reduces brittle dependence on exact crop position
+- `RandomHorizontalFlip()`
+  - is acceptable for face-centric imagery where left-right orientation is usually not the target forensic cue
+- `ColorJitter(0.2, 0.2, 0.2)`
+  - reduces reliance on narrow brightness or color signatures
+- ImageNet normalization
+  - keeps preprocessing aligned with pretrained timm backbone expectations
+- deterministic validation/test resize
+  - keeps evaluation behavior stable and reproducible
+
+Research implication:
+
+- the baseline augmentation policy is intentionally moderate
+- it is meant to regularize the model without making augmentation itself the main experimental driver
+
 ## Split Policy
 
 Current split logic is protocol-aware rather than one pooled default split.
@@ -573,6 +605,24 @@ Recommended primary experiment family:
 - optional separate frame-only models for derived frame folders
 - multimodel or mixed-media runs should be reported only as auxiliary experiments unless a paper section explicitly motivates them
 
+Why balancing is delayed until after protocol selection:
+
+- balancing before protocol separation can hide structural mistakes
+- a balanced but leaky split is still methodologically weak
+- split correctness is therefore treated as the first constraint and class rebalance as the second
+
+What the current oversampling does well:
+
+- equalizes class counts in the training partition
+- leaves validation and test untouched
+- avoids conflating train-time balancing with evaluation-time corpus composition
+
+What it does not solve:
+
+- source leakage
+- dataset-identity shortcuts
+- semantic mismatch across different notions of `fake`
+
 ## Validation Tooling
 
 ### `python -m data.dataset_analyzer`
@@ -587,7 +637,7 @@ Expected result at the current project state:
 
 - every configured dataset should show `OK` in the real-vs-loader comparison
 
-### `python -m train.image_simulate`
+### `python -m train.image.simulate_image_train`
 
 Purpose:
 
@@ -601,7 +651,7 @@ Current verified status:
   - `cifake`
   - `ai-generated-images-vs-real-images`
 
-### `python -m train.run_image_vit`
+### `python -m train.image.run_image_vit`
 
 Purpose:
 
@@ -611,7 +661,8 @@ Purpose:
 Current verified status:
 
 - `IMG-EXP-01` with `image_combined` has completed successfully
-- the run directory stores stable summaries and checkpoints in the new family-based layout
+- the run directory stores checkpoints and split/config summaries in the new family-based layout
+- artifact completeness should still be checked per run directory, because not every saved historical run folder under `train/image/` currently has the exact same summary-file set
 
 ### `python -m data.image_video_frame`
 
@@ -912,6 +963,33 @@ Current issue:
 Effect:
 
 - the paper must define exactly what target concept is being modeled in each experiment
+
+### Derived-frame interpretation risk
+
+Current issue:
+
+- extracted frame folders are not native benchmark datasets
+- they are materialized views of the raw video corpora
+
+Effect:
+
+- any frame-only result must be labeled as a derived-video experiment
+- otherwise the provenance and split semantics become ambiguous
+
+### Training-control comparability risk
+
+Current issue:
+
+- model-family comparisons can become noisy if optimizer and scheduler policy drift between families
+
+Current mitigation:
+
+- the implemented image branches currently use one shared optimization stack
+
+Effect:
+
+- backbone comparisons are more defensible in the present phase
+- later optimizer ablations should be reported explicitly as a separate stage
 
 ## Required Logging For Each Experiment
 

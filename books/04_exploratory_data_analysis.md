@@ -69,6 +69,56 @@ Methodological implication:
 - frame-mass alone should not be used as an argument that the main video corpus is effectively balanced
 - large raw frame mass in FF++ should not be interpreted as a reason to materialize all frames before training; raw-video sequence loading is the preferred main path
 
+## How To Read These Numbers Correctly
+
+The EDA in this repo separates several different notions of distribution.
+
+File-count distribution:
+
+- how many image files or video files belong to each class
+- useful for understanding sample-count imbalance
+
+Frame-mass distribution:
+
+- how many raw frames exist behind the video files in each class
+- useful for understanding whether one class systematically has longer clips
+
+Duration distribution:
+
+- how much real clock-time footage exists per class
+- useful because a dataset can be balanced by file count while still be unbalanced by total footage
+
+Loader-discovery distribution:
+
+- what the active dataloader actually sees
+- this is the number that matters operationally for training and dataset audit consistency
+
+Why these should not be conflated:
+
+- a fake-heavy dataset can remain fake-heavy even after frame-mass analysis
+- a balanced-by-file dataset can still be unbalanced by duration
+- a growing derived-frame corpus can make naive totals look larger than the raw benchmark inventory
+
+## EDA Interpretation Rules Used In This Project
+
+- raw image and raw video totals are treated as the baseline corpus truth
+- derived frame folders are reported separately from the raw corpus
+- image datasets are interpreted as image-domain spatial benchmarks
+- video datasets are interpreted separately as video-domain spatial and spatial+temporal benchmarks
+- frame mass is used to contextualize skew, not to rhetorically erase it
+
+## Why EDA Matters For The Paper
+
+The EDA section is not cosmetic in this project. It determines what claims are defensible.
+
+It supports:
+
+- whether class balancing is needed
+- whether source train/test boundaries are being respected
+- whether temporal models are being evaluated on an honestly skewed corpus
+- whether frame-derived experiments are being presented with the correct provenance
+- whether strong results may actually be driven by dataset identity rather than forensic reasoning
+
 ## Dataloader Agreement
 
 Current expected state:

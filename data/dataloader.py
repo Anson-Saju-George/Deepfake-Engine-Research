@@ -14,12 +14,16 @@ is auxiliary and is not required for the default raw-video workflow.
 """
 
 import os
+import json
 import random
+import subprocess
+import time
 import cv2
 import numpy as np
 import warnings
+from functools import lru_cache
 from pathlib import Path
-from collections import Counter, defaultdict
+from collections import Counter, defaultdict, OrderedDict
 
 # 🔥 Suppress FFmpeg/OpenCV noise
 os.environ["OPENCV_LOG_LEVEL"] = "FATAL"
@@ -46,12 +50,57 @@ warnings.filterwarnings("ignore", category=Image.DecompressionBombWarning)
 
 IMAGE_EXTS = [".jpg", ".jpeg", ".png", ".webp", ".bmp"]
 VIDEO_EXTS = [".mp4", ".avi", ".mov", ".mkv"]
-NUM_WORKERS = 8
+NUM_WORKERS = int(os.getenv("DF_NUM_WORKERS", "8"))
 DEFAULT_IMAGE_VAL_RATIO = 0.15
 DEFAULT_VIDEO_TRAIN_RATIO = 0.7
 DEFAULT_VIDEO_VAL_RATIO = 0.1
 DEFAULT_SEQUENCE_LEN = 8
-DEFAULT_PREFETCH_FACTOR = 2
+DEFAULT_PREFETCH_FACTOR = int(os.getenv("DF_PREFETCH_FACTOR", "4"))
+FFMPEG_BIN = os.getenv("DF_FFMPEG_BIN", "ffmpeg")
+FFPROBE_BIN = os.getenv("DF_FFPROBE_BIN", "ffprobe")
+
+
+def _ffmpeg_output_size():
+    raw = os.getenv("DF_FFMPEG_OUTPUT_SIZE", "").strip()
+    if not raw:
+        return None
+    try:
+        size = int(raw)
+        return size if size > 0 else None
+    except ValueError:
+        return None
+
+
+def _bad_video_log_path():
+    return os.getenv("DF_BAD_VIDEO_LOG_PATH", "train/video/bad_video_log.jsonl")
+
+
+@lru_cache(maxsize=32768)
+def _probe_video_meta_cached(path):
+    meta = {"width": None, "height": None, "frames": None}
+    try:
+        cmd = [
+            FFPROBE_BIN,
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=width,height,nb_frames",
+            "-of",
+            "json",
+            path,
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        payload = json.loads(result.stdout or "{}")
+        stream = (payload.get("streams") or [{}])[0]
+        meta["width"] = int(stream["width"]) if stream.get("width") else None
+        meta["height"] = int(stream["height"]) if stream.get("height") else None
+        if stream.get("nb_frames") and str(stream["nb_frames"]).isdigit():
+            meta["frames"] = int(stream["nb_frames"])
+    except Exception:
+        pass
+    return meta
 
 DATASET_CONFIG = {
     "images": {
@@ -107,6 +156,10 @@ class DeepFakeDataset(Dataset):
         self.mode = mode
         self.seq_len = seq_len
         self.clip_sampling = clip_sampling
+        self._video_meta_cache = {}
+        self._vr_cache = OrderedDict()
+        self._vr_cache_limit = max(1, int(os.getenv("DF_VIDEO_READER_CACHE", "32")))
+        self._bad_video_logged = set()
 
     def __len__(self):
         return len(self.samples)
@@ -115,6 +168,188 @@ class DeepFakeDataset(Dataset):
         cap.set(cv2.CAP_PROP_POS_FRAMES, frame_id)
         ret, frame = cap.read()
         return Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)) if ret else None
+
+    def _video_decode_backend(self):
+        return os.getenv("DF_VIDEO_DECODE_BACKEND", "auto").lower()
+
+    def _log_bad_video(self, path, stage, detail):
+        if not path or path in self._bad_video_logged:
+            return
+        self._bad_video_logged.add(path)
+        try:
+            log_path = Path(_bad_video_log_path())
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            payload = {
+                "ts": int(time.time()),
+                "path": path,
+                "stage": stage,
+                "detail": detail,
+                "backend": self._video_decode_backend(),
+                "mode": self.mode,
+                "seq_len": self.seq_len,
+            }
+            with log_path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(payload, ensure_ascii=True) + "\n")
+        except Exception:
+            pass
+
+    def _use_decord_backend(self):
+        backend = self._video_decode_backend()
+        if not HAS_DECORD:
+            return False
+        return backend in {"decord", "decord_cpu"}
+
+    def _get_decord_reader(self, path):
+        reader = self._vr_cache.get(path)
+        if reader is not None:
+            self._vr_cache.move_to_end(path)
+            return reader
+
+        try:
+            reader = VideoReader(path, ctx=cpu(0))
+        except Exception as exc:
+            self._log_bad_video(path, "decord_open", repr(exc))
+            raise
+        self._vr_cache[path] = reader
+        if len(self._vr_cache) > self._vr_cache_limit:
+            self._vr_cache.popitem(last=False)
+        return reader
+
+    def _ffmpeg_hwaccel_args(self):
+        backend = self._video_decode_backend()
+        if backend == "ffmpeg_qsv":
+            return ["-hwaccel", "qsv"]
+        if backend == "ffmpeg_d3d11va":
+            return ["-hwaccel", "d3d11va"]
+        return []
+
+    def _ffmpeg_filter_expr(self, base_expr):
+        filters = []
+        output_size = _ffmpeg_output_size()
+        if output_size:
+            filters.append(f"scale={output_size}:{output_size}")
+        filters.append(base_expr)
+        filters.append("format=rgb24")
+        return ",".join(filters)
+
+    def _video_meta(self, path):
+        cached = self._video_meta_cache.get(path)
+        if cached is not None:
+            return cached
+
+        meta = dict(_probe_video_meta_cached(path))
+
+        if meta["frames"] in {None, 0}:
+            cap = cv2.VideoCapture(path)
+            frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            cap.release()
+            meta["frames"] = frames if frames > 0 else 0
+            if meta["width"] is None and width > 0:
+                meta["width"] = width
+            if meta["height"] is None and height > 0:
+                meta["height"] = height
+
+        self._video_meta_cache[path] = meta
+        return meta
+
+    def _read_video_frame_ffmpeg(self, path, frame_id):
+        meta = self._video_meta(path)
+        width, height = meta["width"], meta["height"]
+        if not width or not height:
+            return None
+
+        filter_expr = self._ffmpeg_filter_expr(f"select=eq(n\\,{frame_id})")
+        cmd = [
+            FFMPEG_BIN,
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            *self._ffmpeg_hwaccel_args(),
+            "-i",
+            path,
+            "-vf",
+            filter_expr,
+            "-vsync",
+            "0",
+            "-frames:v",
+            "1",
+            "-f",
+            "rawvideo",
+            "-pix_fmt",
+            "rgb24",
+            "-",
+        ]
+        try:
+            result = subprocess.run(cmd, capture_output=True, check=True)
+            output_size = _ffmpeg_output_size()
+            if output_size:
+                width = output_size
+                height = output_size
+            expected = width * height * 3
+            if len(result.stdout) < expected:
+                self._log_bad_video(path, "ffmpeg_single_short_read", f"bytes={len(result.stdout)} expected={expected}")
+                return None
+            frame = np.frombuffer(result.stdout[:expected], dtype=np.uint8).reshape(height, width, 3)
+            return Image.fromarray(frame)
+        except Exception as exc:
+            self._log_bad_video(path, "ffmpeg_single", repr(exc))
+            return None
+
+    def _read_video_sequence_ffmpeg(self, path, indices):
+        if not indices:
+            return []
+        meta = self._video_meta(path)
+        width, height = meta["width"], meta["height"]
+        if not width or not height:
+            return []
+
+        start = indices[0]
+        end = indices[-1]
+        filter_expr = self._ffmpeg_filter_expr(f"select=between(n\\,{start}\\,{end})")
+        cmd = [
+            FFMPEG_BIN,
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            *self._ffmpeg_hwaccel_args(),
+            "-i",
+            path,
+            "-vf",
+            filter_expr,
+            "-vsync",
+            "0",
+            "-frames:v",
+            str(len(indices)),
+            "-f",
+            "rawvideo",
+            "-pix_fmt",
+            "rgb24",
+            "-",
+        ]
+        try:
+            result = subprocess.run(cmd, capture_output=True, check=True)
+            output_size = _ffmpeg_output_size()
+            if output_size:
+                width = output_size
+                height = output_size
+            frame_bytes = width * height * 3
+            raw = result.stdout
+            if len(raw) < frame_bytes:
+                self._log_bad_video(path, "ffmpeg_sequence_short_read", f"bytes={len(raw)} frame_bytes={frame_bytes}")
+                return []
+            frame_count = len(raw) // frame_bytes
+            frames = []
+            for offset in range(frame_count):
+                start_byte = offset * frame_bytes
+                end_byte = start_byte + frame_bytes
+                frame = np.frombuffer(raw[start_byte:end_byte], dtype=np.uint8).reshape(height, width, 3)
+                frames.append(Image.fromarray(frame))
+            return frames
+        except Exception as exc:
+            self._log_bad_video(path, "ffmpeg_sequence", repr(exc))
+            return []
 
     def _read_frame_dir_image(self, frame_files, index):
         if not frame_files:
@@ -155,13 +390,35 @@ class DeepFakeDataset(Dataset):
                 if dtype == "image":
                     img = Image.open(path).convert("RGB")
                 elif dtype == "video":
-                    if HAS_DECORD:
-                        vr = VideoReader(path, ctx=cpu(0))
-                        img = Image.fromarray(vr[self._single_index(len(vr))].asnumpy())
+                    if self._use_decord_backend():
+                        try:
+                            vr = self._get_decord_reader(path)
+                            img = Image.fromarray(vr[self._single_index(len(vr))].asnumpy())
+                        except Exception:
+                            img = None
+                        if img is None:
+                            self._log_bad_video(path, "decord_single_fallback", "falling back to non-decord path")
+                            meta = self._video_meta(path)
+                            frame_id = self._single_index(meta["frames"] or 0)
+                            if self._video_decode_backend() in {"ffmpeg", "ffmpeg_qsv", "ffmpeg_d3d11va"}:
+                                img = self._read_video_frame_ffmpeg(path, frame_id)
+                            if img is None:
+                                cap = cv2.VideoCapture(path)
+                                img = self._read_frame(cap, frame_id)
+                                cap.release()
                     else:
-                        cap = cv2.VideoCapture(path)
-                        img = self._read_frame(cap, self._single_index(int(cap.get(cv2.CAP_PROP_FRAME_COUNT))))
-                        cap.release()
+                        meta = self._video_meta(path)
+                        frame_id = self._single_index(meta["frames"] or 0)
+                        img = None
+                        if self._video_decode_backend() in {"ffmpeg", "ffmpeg_qsv", "ffmpeg_d3d11va"}:
+                            img = self._read_video_frame_ffmpeg(path, frame_id)
+                        if img is None:
+                            cap = cv2.VideoCapture(path)
+                            img = self._read_frame(cap, frame_id)
+                            cap.release()
+                    if img is None:
+                        self._log_bad_video(path, "video_single_none", "all decode paths returned None")
+                        img = Image.new("RGB", (224, 224))
                 elif dtype == "frame":
                     frame_files = self._list_frame_files(path)
                     img = self._read_frame_dir_image(frame_files, self._single_index(len(frame_files)))
@@ -179,26 +436,44 @@ class DeepFakeDataset(Dataset):
                             img = self.transform(img)
                         frames.append(img)
                     return torch.stack(frames), label
-                if HAS_DECORD:
-                    vr = VideoReader(path, ctx=cpu(0))
-                    indices = self._contiguous_indices(len(vr))
-                    frames = [Image.fromarray(f.asnumpy()) for f in vr.get_batch(indices)]
-                    if self.transform: frames = [self.transform(f) for f in frames]
-                    return torch.stack(frames), label
+                if self._use_decord_backend():
+                    try:
+                        vr = self._get_decord_reader(path)
+                        indices = self._contiguous_indices(len(vr))
+                        frames = [Image.fromarray(f.asnumpy()) for f in vr.get_batch(indices)]
+                        if self.transform: frames = [self.transform(f) for f in frames]
+                        return torch.stack(frames), label
+                    except Exception:
+                        self._log_bad_video(path, "decord_sequence_fallback", "falling back to non-decord path")
                 else:
-                    cap = cv2.VideoCapture(path)
-                    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-                    indices = self._contiguous_indices(total_frames)
+                    meta = self._video_meta(path)
+                    indices = self._contiguous_indices(meta["frames"] or 0)
+                    pil_frames = []
+                    if self._video_decode_backend() in {"ffmpeg", "ffmpeg_qsv", "ffmpeg_d3d11va"}:
+                        pil_frames = self._read_video_sequence_ffmpeg(path, indices)
+                    if not pil_frames:
+                        cap = cv2.VideoCapture(path)
+                        pil_frames = []
+                        for i in indices:
+                            img = self._read_frame(cap, i)
+                            if img is None: img = pil_frames[-1] if pil_frames else Image.new('RGB', (224, 224))
+                            pil_frames.append(img)
+                        cap.release()
+                    if len(pil_frames) < len(indices):
+                        pad = pil_frames[-1] if pil_frames else Image.new("RGB", (224, 224))
+                        pil_frames.extend([pad] * (len(indices) - len(pil_frames)))
                     frames = []
-                    for i in indices:
-                        img = self._read_frame(cap, i)
-                        if img is None: img = frames[-1] if frames else Image.new('RGB', (224, 224))
+                    for img in pil_frames[: len(indices)]:
                         if self.transform: img = self.transform(img)
                         frames.append(img)
-                    cap.release()
+                    if not frames:
+                        self._log_bad_video(path, "video_sequence_empty", "all decode paths returned empty sequence")
+                        frames = [torch.zeros((3, 224, 224)) for _ in range(self.seq_len)]
                     return torch.stack(frames), label
             raise ValueError(f"Unsupported mode: {self.mode}")
-        except Exception:
+        except Exception as exc:
+            if dtype == "video":
+                self._log_bad_video(path, "getitem_exception", repr(exc))
             shape = (3, 224, 224) if self.mode == "single" else (self.seq_len, 3, 224, 224)
             return torch.zeros(shape), label
 
@@ -706,6 +981,8 @@ class DatasetBuilder(_LegacyDatasetBuilder):
         balanced=True,
         train_ratio=DEFAULT_VIDEO_TRAIN_RATIO,
         val_ratio=None,
+        train_transform=None,
+        eval_transform=None,
     ):
         self.build()
         resolved_protocol = self._resolve_protocol(dtype=dtype, protocol=protocol)
@@ -747,14 +1024,14 @@ class DatasetBuilder(_LegacyDatasetBuilder):
         val = [self._record_to_sample(record) for record in val_records]
         test = [self._record_to_sample(record) for record in test_records]
 
-        tf_train = transforms.Compose([
+        tf_train = train_transform or transforms.Compose([
             transforms.RandomResizedCrop(224, scale=(0.9, 1.0)),
             transforms.RandomHorizontalFlip(),
             transforms.ColorJitter(0.2, 0.2, 0.2),
             transforms.ToTensor(),
             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
         ])
-        tf_val = transforms.Compose([
+        tf_val = eval_transform or transforms.Compose([
             transforms.Resize((224, 224)),
             transforms.ToTensor(),
             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
