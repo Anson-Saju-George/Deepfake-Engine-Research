@@ -57,7 +57,6 @@ Important truth:
 
 ### Legacy reference tree
 
-`train_old/` remains relevant for historical comparison and older video behavior.
 
 ## Protocol-Aware Training Philosophy
 

@@ -349,9 +349,7 @@ python -m data.dataset_run --dtype image --num-workers 16
 python -m data.dataset_run --dtype video --num-workers 8
 ```
 
-## New Train Tree
-
-The new top-level image training path is now active.
+## Pipeline Smoke Checks
 
 Image pipeline smoke test:
 
@@ -364,30 +362,4 @@ Single-dataset smoke tests:
 ```bash
 python -m train.image.simulate_image_train --datasets cifake
 python -m train.image.simulate_image_train --datasets ai-generated-images-vs-real-images
-```
-
-ViT image trainer menu:
-
-```bash
-python -m train.image.run_image_vit
-```
-
-Direct ViT image trainer examples:
-
-```bash
-python -m train.image.run_image_vit --exp IMG-EXP-01 --dataset-scope cifake
-python -m train.image.run_image_vit --exp IMG-EXP-01 --dataset-scope ai_gen
-python -m train.image.run_image_vit --exp IMG-EXP-01 --dataset-scope image_combined
-```
-
-Implemented ViT experiment IDs:
-
-- `IMG-EXP-01` -> `vit_base_patch16_224`
-- `IMG-EXP-02` -> `vit_large_patch16_224`
-- `IMG-EXP-03` -> `vit_huge_patch14_224`
-
-Current new-tree image save layout:
-
-```text
-train/image/<family_name>/<exp_no>_<model_name>_<dataset_tag>/
 ```

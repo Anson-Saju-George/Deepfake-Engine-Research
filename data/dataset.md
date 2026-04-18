@@ -96,7 +96,6 @@ The repository currently has three distinct data-layer roles. These should not b
 - `data/dataloader.py`
 - active image training tree under `train/image/`
 - active video research tree under `train/video/`
-- legacy references under `train_old/`
 - raw image and raw video loading are the active default training path
 - image datasets feed image-only spatial models
 - raw video datasets feed video-only models
@@ -106,19 +105,9 @@ The repository currently has three distinct data-layer roles. These should not b
 - separate image and video models are the intended primary research path
 - mixed-media loading should still be treated as auxiliary rather than as the main reported protocol
 - current implementation reality:
-  - `train/image/simulate_image_train.py` is the active image smoke-test entrypoint
-  - active image runner families now exist for:
-    - `train/image/run_image_vit.py`
-    - `train/image/run_image_convnext.py`
-    - `train/image/run_image_swin.py`
-    - `train/image/run_image_deit.py`
-    - `train/image/run_image_convnextv2.py`
-    - `train/image/run_image_maxvit.py`
-    - `train/image/run_image_eva.py`
-  - active video registry and runner surfaces now exist under:
-    - `train/video/video_models.py`
-    - `train/video/spa/`
-    - `train/video/tmp/`
+  - `train/image/simulate_image_train.py` remains the main image-side pipeline smoke-check entrypoint
+  - active image consumers of the dataloader live under `train/image/`
+  - active video consumers of the dataloader live under `train/video/`
     - `train/video/st/`
   - current video execution still routes through smoke validation rather than the final migrated research trainer
 
@@ -650,19 +639,6 @@ Current verified status:
 - confirmed current loader correctness for:
   - `cifake`
   - `ai-generated-images-vs-real-images`
-
-### `python -m train.image.run_image_vit`
-
-Purpose:
-
-- run the currently implemented ViT trainer in the new `train/` tree
-- execute `IMG-EXP-01..03` with the active `image_only` split policy
-
-Current verified status:
-
-- `IMG-EXP-01` with `image_combined` has completed successfully
-- the run directory stores checkpoints and split/config summaries in the new family-based layout
-- artifact completeness should still be checked per run directory, because not every saved historical run folder under `train/image/` currently has the exact same summary-file set
 
 ### `python -m data.image_video_frame`
 

@@ -12,7 +12,6 @@ Primary anchors:
 - `proc/pre_process_videos.py`
 - `train/image/`
 - `train/video/`
-- `train_old/` for historical comparison
 
 ## Current Repo Truth
 
@@ -301,6 +300,11 @@ Current visible saved video-run artifacts under `train/video/` include:
   - `VID-ST-03_convnext_large_video_combined_loss-none_lr-5e-05`
   - `VID-ST-05_maxvit_base_tf_224.in1k_video_combined_loss-none_lr-5e-05`
 
+Repo-wide final-result scan status:
+
+- completed `final_summary.json` files found under active `train/`: `15`
+- therefore the currently reportable completed evidence surface is entirely in the active `train/` tree
+
 ## Current Saved Result Snapshot
 
 ### Image Results
@@ -375,10 +379,12 @@ Current completed video runs with saved final summaries:
     - best val F1: `0.7752`
     - test F1: `0.7841`
     - test accuracy: `0.9089`
-  - `VID-ST-05` MaxViT-Base hybrid, `loss=none`, `seq_len=4`, `lr=5e-5`
-    - best val F1: `0.6848`
-    - test F1: `0.6414`
-    - test accuracy: `0.8186`
+- `VID-ST-05` MaxViT-Base hybrid, `loss=none`, `seq_len=4`, `lr=5e-5`
+  - best val F1: `0.6848`
+  - test F1: `0.6414`
+  - test accuracy: `0.8186`
+
+This list is exhaustive for the currently completed repo-visible `final_summary.json` files.
 
 Current video leaders:
 
@@ -508,6 +514,12 @@ Observed documentation risk:
 
 - historical run folders are not perfectly uniform in artifact completeness
 - reporting should cite the files actually present in each run directory instead of assuming every saved folder has the full artifact set
+
+Current incomplete-result note:
+
+- some run directories contain `history.csv`, `best_summary.json`, or `run_record.md` without a matching `final_summary.json`
+- for example, `VID-TMP-04` currently has partial training artifacts but is not part of the completed final-result evidence surface
+- thesis tables should therefore be built from `final_summary.json` plus `run_record.md`, not from directory names alone
 
 ## Current Source Of Truth Docs
 

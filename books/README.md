@@ -54,7 +54,6 @@ At the current project state:
 - the active raw-video smoke path is `train/video/simulate_video_train.py`
 - raw-video training remains the intended main video path
 - frame materialization remains auxiliary rather than mandatory
-- `train_old/` remains reference and historical context, especially for older video behavior
 
 ## Current Headline Findings
 

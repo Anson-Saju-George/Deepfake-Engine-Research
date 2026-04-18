@@ -13,7 +13,6 @@ The current project state is organized around:
 - a protocol-aware dataloader in `data/dataloader.py`
 - an active image training tree under `train/image/`
 - an active video research registry under `train/video/`
-- legacy reference implementations under `train_old/`
 - thesis-oriented research notes under `books/`
 
 That separation is methodological, not cosmetic. It exists to keep the benchmark claims defensible in a thesis, journal paper, or technical audit.

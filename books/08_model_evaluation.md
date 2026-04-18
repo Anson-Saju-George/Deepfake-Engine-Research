@@ -361,6 +361,11 @@ At the present stage:
 
 Image and video results must be interpreted separately.
 
+Repo-wide completed-result audit:
+
+- completed `final_summary.json` files found in active `train/`: `15`
+- evaluation claims below therefore reflect the entire completed repo-visible result surface, not a cherry-picked subset
+
 ### Image
 
 Current completed image results:
@@ -432,6 +437,11 @@ Current video conclusion:
 - `VID-ST-03` matches it numerically under the current implementation
 - `VID-ST-02` underperformed strongly
 - `VID-ST-05` improved over `VID-ST-02` but still trails the ConvNeXt-Large sequence result
+
+Completed-result boundary:
+
+- some directories contain partial artifacts without a final completed summary
+- those should be treated as interrupted or incomplete runs, not as final evidence
 
 ## Cross-Domain Interpretation
 

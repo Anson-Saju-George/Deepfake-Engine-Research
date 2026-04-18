@@ -96,7 +96,6 @@ Documentation drift means the Markdown layer stops matching the code and actual 
 
 Examples:
 
-- docs still describing `train_old/` as the active image tree
 - docs describing full-frame materialization as core when the repo has moved to raw-video training as primary
 - docs omitting an implemented model family
 
