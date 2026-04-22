@@ -984,41 +984,18 @@ class DatasetBuilder(_LegacyDatasetBuilder):
         train_transform=None,
         eval_transform=None,
     ):
-        self.build()
-        resolved_protocol = self._resolve_protocol(dtype=dtype, protocol=protocol)
-        filtered_records = self._filter_records(dtype=dtype, dataset_names=dataset_names)
-
-        if val_ratio is None:
-            if resolved_protocol in {"video_only", "frame_only"}:
-                val_ratio = DEFAULT_VIDEO_VAL_RATIO
-            else:
-                val_ratio = 0.2
-
-        if resolved_protocol == "image_only":
-            train_records, val_records, test_records = self._prepare_image_only(filtered_records)
-        elif resolved_protocol == "video_only":
-            train_records, val_records, test_records = self._prepare_video_only(
-                filtered_records,
-                train_ratio=train_ratio,
-                val_ratio=val_ratio,
-            )
-        elif resolved_protocol == "frame_only":
-            train_records, val_records, test_records = self._prepare_frame_only(
-                filtered_records,
-                train_ratio=train_ratio,
-                val_ratio=val_ratio,
-            )
-        elif resolved_protocol == "combined_aux":
-            train_records, val_records, test_records = self._prepare_combined_aux(
-                filtered_records,
-                train_ratio=train_ratio,
-                val_ratio=val_ratio,
-            )
-        else:
-            raise ValueError(f"Unsupported protocol: {resolved_protocol}")
-
-        if balanced:
-            train_records = self._apply_class_balance(train_records)
+        split_bundle = self.prepare_records(
+            dtype=dtype,
+            protocol=protocol,
+            dataset_names=dataset_names,
+            balanced=balanced,
+            train_ratio=train_ratio,
+            val_ratio=val_ratio,
+        )
+        resolved_protocol = split_bundle["protocol"]
+        train_records = split_bundle["train"]
+        val_records = split_bundle["val"]
+        test_records = split_bundle["test"]
 
         train = [self._record_to_sample(record) for record in train_records]
         val = [self._record_to_sample(record) for record in val_records]
@@ -1065,3 +1042,55 @@ class DatasetBuilder(_LegacyDatasetBuilder):
                 **build_loader_kwargs(batch_size=batch_size),
             )
         )
+
+    def prepare_records(
+        self,
+        dtype=None,
+        protocol=None,
+        dataset_names=None,
+        balanced=True,
+        train_ratio=DEFAULT_VIDEO_TRAIN_RATIO,
+        val_ratio=None,
+    ):
+        self.build()
+        resolved_protocol = self._resolve_protocol(dtype=dtype, protocol=protocol)
+        filtered_records = self._filter_records(dtype=dtype, dataset_names=dataset_names)
+
+        if val_ratio is None:
+            if resolved_protocol in {"video_only", "frame_only"}:
+                val_ratio = DEFAULT_VIDEO_VAL_RATIO
+            else:
+                val_ratio = 0.2
+
+        if resolved_protocol == "image_only":
+            train_records, val_records, test_records = self._prepare_image_only(filtered_records)
+        elif resolved_protocol == "video_only":
+            train_records, val_records, test_records = self._prepare_video_only(
+                filtered_records,
+                train_ratio=train_ratio,
+                val_ratio=val_ratio,
+            )
+        elif resolved_protocol == "frame_only":
+            train_records, val_records, test_records = self._prepare_frame_only(
+                filtered_records,
+                train_ratio=train_ratio,
+                val_ratio=val_ratio,
+            )
+        elif resolved_protocol == "combined_aux":
+            train_records, val_records, test_records = self._prepare_combined_aux(
+                filtered_records,
+                train_ratio=train_ratio,
+                val_ratio=val_ratio,
+            )
+        else:
+            raise ValueError(f"Unsupported protocol: {resolved_protocol}")
+
+        if balanced:
+            train_records = self._apply_class_balance(train_records)
+
+        return {
+            "protocol": resolved_protocol,
+            "train": train_records,
+            "val": val_records,
+            "test": test_records,
+        }

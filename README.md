@@ -17,6 +17,31 @@ The current project state is organized around:
 
 That separation is methodological, not cosmetic. It exists to keep the benchmark claims defensible in a thesis, journal paper, or technical audit.
 
+## Current Results Snapshot
+
+Current evaluated results are summarized in [Results.md](./Results.md).
+
+Current leaders:
+
+- best image run: `IMG-EXP-04 | ConvNeXt | convnext_base`
+  - accuracy: `0.9863`
+  - f1: `0.9863`
+  - roc_auc: `0.9968`
+- best video run: `VID-TMP-02 | ConvNeXt Sequence | convnext_large`
+  - accuracy: `0.9089`
+  - f1: `0.7841`
+  - roc_auc: `0.9594`
+- matching video result: `VID-ST-03 | ConvNeXt Hybrid | convnext_large`
+  - accuracy: `0.9089`
+  - f1: `0.7841`
+  - roc_auc: `0.9594`
+
+Current interpretation:
+
+- image detection is materially stronger than the current video runs
+- `ConvNeXt` is the strongest family in the current completed evidence
+- `focal` loss underperformed on the completed spatial video comparison
+
 ## Dataset Snapshot
 
 Current cleaned raw dataset truth:
@@ -129,6 +154,17 @@ Current image save layout:
 train/image/<family_name>/<exp_no>_<model_name>_<dataset_tag>/
 ```
 
+Current image evaluation export:
+
+```bash
+python -m train.image.test_image_models --workers 8 --prefetch-factor 4 --batch-size 128
+```
+
+Each completed image run can contain:
+
+- `test_predictions.csv`
+- `test_evaluation.json`
+
 ### Active Video Research Tree
 
 The active video tree lives under `train/video/`.
@@ -158,6 +194,17 @@ python -m train.video.spa.run_video_spatial
 python -m train.video.tmp.run_video_temporal
 python -m train.video.st.run_video_spatiotemporal
 ```
+
+Current video evaluation export:
+
+```bash
+python -m train.video.test_video_models --workers 8 --prefetch-factor 4 --batch-size 4
+```
+
+Each completed video run can contain:
+
+- `test_predictions.csv`
+- `test_evaluation.json`
 
 Important current truth:
 
@@ -249,6 +296,16 @@ Training docs:
 - `train/video/video_commands.md`
 - `train/video/video_config.md`
 - `train/video/Experiment_List.md`
+
+Evaluation and result docs:
+
+- `Results.md`
+- `graphs/README.md`
+- `graphs/graph_manifest.csv`
+- `train/eval_predictions_common.py`
+- `train/test_all_models.py`
+- `train/image/test_image_models.py`
+- `train/video/test_video_models.py`
 
 Research lifecycle docs:
 

@@ -25,6 +25,7 @@ datasets/images/cifake/
 datasets/videos/celeb-df-v2/
 datasets/videos/faceforensics++/
 datasets/videos/real-ai-videos/
+datasets/.gitattributes
 
 # Old directories
 graphs_old/
@@ -43,9 +44,12 @@ train/video/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-
+graphs_old/
 
 # Ignoring classified files
 # Keep the actual data pipeline, preprocessing internals, and research structure visible.
 # Hide only private tracking-style notes.
 Progress.md
+models/
+Weights/
+Weights.zip

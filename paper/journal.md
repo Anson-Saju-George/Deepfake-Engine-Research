@@ -146,35 +146,73 @@ Sequential frame modeling.
 ## 7. Experiments and Results
 
 ### 7.1 Experimental Setup
-- Datasets used  
-- Evaluation metrics:
-  - Accuracy  
-  - F1 Score  
-  - ROC-AUC  
+All experiments were executed on a Windows 11 system (`10.0.26200`) with an NVIDIA GeForce RTX 5080 Laptop GPU (`15.92 GB` VRAM, driver `595.97`), `63.42 GB` RAM, and a `20`-core Intel CPU. The software environment was managed through a dedicated Conda environment (`torch`) using Python `3.12.12`, PyTorch `2.10.0+cu130`, TorchVision `0.25.0+cu130`, TorchAudio `2.10.0+cu130`, CUDA `13.0`, cuDNN `91200`, and timm `1.0.25`. Supporting libraries included NumPy `2.3.4`, pandas `2.3.3`, scikit-learn `1.7.2`, OpenCV `4.13.0`, Pillow `12.0.0`, and Matplotlib `3.10.7`.
+
+The evaluation protocol was modality-separated throughout. Image experiments used the `image_only` protocol, preserving source train/test boundaries and deriving validation from source training partitions. Video experiments used the `video_only` protocol with identity-aware grouped splitting at `70/10/20` for train/validation/test. Spatial video baselines used `mode="single"`, whereas temporal and spatiotemporal runs used `mode="sequence"` with deterministic center-clip sampling at test time. Final held-out evaluation was exported through per-run `test_predictions.csv` and `test_evaluation.json` artifacts.
+
+Reported metrics are accuracy, precision, recall, F1-score, ROC-AUC, average precision, and confusion matrices.
 
 ---
 
 ### 7.2 Image Model Results
-- Training curves  
-- Model comparison  
+Image-domain detection was substantially stronger than the current video-domain runs. The best completed image model was `IMG-EXP-04` (`ConvNeXt-Base`), reaching `0.9863` accuracy, `0.9863` F1, and `0.9968` ROC-AUC on the held-out image test set. `Swin-Base` and `ConvNeXt-Large` remained very close, while both ViT runs trailed the top convolutional and hierarchical-transformer models.
+
+| Experiment | Family | Model | Accuracy | F1 | Precision | Recall | ROC-AUC | AP |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| IMG-EXP-04 | ConvNeXt | convnext_base | 0.9863 | 0.9863 | 0.9867 | 0.9858 | 0.9968 | 0.9956 |
+| IMG-EXP-07 | Swin | swin_base_patch4_window7_224 | 0.9842 | 0.9842 | 0.9860 | 0.9823 | 0.9987 | 0.9986 |
+| IMG-EXP-05 | ConvNeXt | convnext_large | 0.9840 | 0.9840 | 0.9831 | 0.9849 | 0.9966 | 0.9966 |
+| IMG-EXP-01 | ViT | vit_base_patch16_224 | 0.9703 | 0.9702 | 0.9734 | 0.9670 | 0.9939 | 0.9931 |
+| IMG-EXP-02 | ViT | vit_large_patch16_224 | 0.9548 | 0.9546 | 0.9588 | 0.9504 | 0.9899 | 0.9893 |
+
+Relevant generated figures include `graphs/overview/image_comparison.png`, `graphs/overview/cnn_vs_transformer.png`, and the per-run dashboards under `graphs/runs/image/`.
 
 ---
 
 ### 7.3 Video Model Results
-- Spatial vs temporal comparison  
-- Performance improvements  
+Video-domain performance was lower than the image-domain ceiling, but the ranking pattern remained consistent: ConvNeXt-based runs dominated the strongest completed evidence. The best video results came from `VID-TMP-02` (`ConvNeXt-Large` temporal) and `VID-ST-03` (`ConvNeXt-Large` spatiotemporal), both reaching `0.9089` accuracy, `0.7841` F1, and `0.9594` ROC-AUC. Among spatial baselines, `VID-SPA-02 ConvNeXt-Base` with `loss=none` was strongest, outperforming both weighted cross-entropy and focal loss variants in F1.
+
+| Experiment | Category | Family | Model | Loss | Accuracy | F1 | Precision | Recall | ROC-AUC | AP |
+| --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| VID-TMP-02 | temporal | ConvNeXt Sequence | convnext_large | none | 0.9089 | 0.7841 | 0.7105 | 0.8747 | 0.9594 | 0.8924 |
+| VID-ST-03 | spatiotemporal | ConvNeXt Hybrid | convnext_large | none | 0.9089 | 0.7841 | 0.7105 | 0.8747 | 0.9594 | 0.8924 |
+| VID-TMP-01 | temporal | ConvNeXt Sequence | convnext_base | weighted_ce | 0.8828 | 0.7092 | 0.6679 | 0.7559 | 0.9217 | 0.8047 |
+| VID-TMP-01 | temporal | ConvNeXt Sequence | convnext_base | none | 0.8652 | 0.7090 | 0.5991 | 0.8683 | 0.9414 | 0.8445 |
+| VID-SPA-02 | spatial | ConvNeXt | convnext_base | none | 0.8566 | 0.7023 | 0.5782 | 0.8942 | 0.9498 | 0.8682 |
+| VID-SPA-02 | spatial | ConvNeXt | convnext_base | weighted_ce | 0.8717 | 0.6709 | 0.6517 | 0.6911 | 0.8941 | 0.7443 |
+| VID-ST-05 | spatiotemporal | MaxViT Hybrid | maxvit_base_tf_224.in1k | none | 0.8186 | 0.6414 | 0.5123 | 0.8575 | 0.9161 | 0.7482 |
+| VID-ST-02 | spatiotemporal | ConvNeXt Hybrid | convnext_base | none | 0.7663 | 0.5744 | 0.4381 | 0.8337 | 0.8586 | 0.6036 |
+| VID-SPA-06 | spatial | Swin | swin_base_patch4_window7_224 | none | 0.7504 | 0.5253 | 0.4102 | 0.7300 | 0.8145 | 0.5507 |
+| VID-SPA-02 | spatial | ConvNeXt | convnext_base | focal | 0.8027 | 0.4744 | 0.4781 | 0.4708 | 0.7059 | 0.4398 |
+
+Relevant comparison figures include `graphs/overview/spatial_comparison.png`, `graphs/overview/temporal_comparison.png`, `graphs/overview/spatiotemporal_comparison.png`, and `graphs/overview/loss_function_ablation.png`.
 
 ---
 
 ### 7.4 Evaluation Analysis
-- ROC curves  
-- Confusion matrices  
+Prediction-based ROC curves and confusion matrices were exported for both image and video leaders. The image ROC profile remained close to the upper-left corner, consistent with the near-ceiling image F1 scores. In contrast, the video ROC and confusion figures show that video models still trade off recall against false positives more aggressively, particularly in the weaker spatial-only baselines.
+
+Key generated assets are:
+
+- `graphs/overview/image_confusion_matrix.png`
+- `graphs/overview/video_confusion_matrix.png`
+- `graphs/overview/image_roc_curve.png`
+- `graphs/overview/video_roc_curve.png`
+
+These figures were generated from exported `test_predictions.csv` files rather than only from aggregate summaries, making the reported operating characteristics directly traceable to held-out per-sample predictions.
 
 ---
 
 ### 7.5 Generalization Analysis
-- Cross-dataset evaluation  
-- Generalization gap  
+The current evidence shows a clear modality gap: image models generalize far better on their held-out domain than the video models do on theirs. At the same time, the strongest completed video runs narrow the gap substantially once temporal aggregation is introduced. ConvNeXt-Large sequence and hybrid runs provide the most stable video-domain generalization among the completed checkpoints.
+
+Two additional implementation-aware observations are important. First, the completed `VID-TMP-02` and `VID-ST-03` runs are numerically identical in the current evidence snapshot, which matches the current implementation note that the active temporal and spatiotemporal branches share the same sequence trainer mechanics. Second, focal loss underperformed badly on the completed spatial ConvNeXt comparison, suggesting that the default oversampling plus standard cross-entropy path remains the more defensible baseline under the current corpus composition.
+
+Cross-run summary figures are available in:
+
+- `graphs/overview/leaderboard.png`
+- `graphs/overview/generalization_gap.png`
+- `graphs/overview/cross_modality_comparison.png`
 
 ---
 
