@@ -1,4 +1,4 @@
-﻿# Experiment Matrix
+# Experiment Matrix
 
 ## Purpose
 
@@ -10,13 +10,13 @@ This file maps the active experiment surface across protocols, datasets, split l
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Image Smoke Test | `image_only` | image | `cifake` | preserve source train/test, val from train | single image, spatial-only | `python -m train.image.simulate_image_train --datasets cifake` | active |
 | Image Smoke Test | `image_only` | image | `ai-generated-images-vs-real-images` | preserve source train/test, val from train | single image, spatial-only | `python -m train.image.simulate_image_train --datasets ai-generated-images-vs-real-images` | active |
-| Image ViT | `image_only` | image | `cifake`, `ai_gen`, `image_combined` | preserve per-dataset source boundaries | single image, spatial-only | `python -m train.image.run_image_vit` | active |
-| Image ConvNeXt | `image_only` | image | `cifake`, `ai_gen`, `image_combined` | preserve per-dataset source boundaries | single image, spatial-only | `python -m train.image.run_image_convnext` | active |
-| Image Swin | `image_only` | image | `cifake`, `ai_gen`, `image_combined` | preserve per-dataset source boundaries | single image, spatial-only | `python -m train.image.run_image_swin` | active |
-| Image DeiT | `image_only` | image | `cifake`, `ai_gen`, `image_combined` | preserve per-dataset source boundaries | single image, spatial-only | `python -m train.image.run_image_deit` | active |
-| Image ConvNeXtV2 | `image_only` | image | `cifake`, `ai_gen`, `image_combined` | preserve per-dataset source boundaries | single image, spatial-only | `python -m train.image.run_image_convnextv2` | active |
-| Image MaxViT | `image_only` | image | `cifake`, `ai_gen`, `image_combined` | preserve per-dataset source boundaries | single image, spatial-only | `python -m train.image.run_image_maxvit` | active |
-| Image EVA | `image_only` | image | `cifake`, `ai_gen`, `image_combined` | preserve per-dataset source boundaries | single image, spatial-only | `python -m train.image.run_image_eva` | active |
+| Image ViT | `image_only` | image | `cifake`, `ai_gen`, `image_combined` | preserve per-dataset source boundaries | single image, spatial-only | `python -m train.image.run_image` | active |
+| Image ConvNeXt | `image_only` | image | `cifake`, `ai_gen`, `image_combined` | preserve per-dataset source boundaries | single image, spatial-only | `python -m train.image.run_image` | active |
+| Image Swin | `image_only` | image | `cifake`, `ai_gen`, `image_combined` | preserve per-dataset source boundaries | single image, spatial-only | `python -m train.image.run_image` | active |
+| Image DeiT | `image_only` | image | `cifake`, `ai_gen`, `image_combined` | preserve per-dataset source boundaries | single image, spatial-only | `python -m train.image.run_image` | active |
+| Image ConvNeXtV2 | `image_only` | image | `cifake`, `ai_gen`, `image_combined` | preserve per-dataset source boundaries | single image, spatial-only | `python -m train.image.run_image` | active |
+| Image MaxViT | `image_only` | image | `cifake`, `ai_gen`, `image_combined` | preserve per-dataset source boundaries | single image, spatial-only | `python -m train.image.run_image` | active |
+| Image EVA | `image_only` | image | `cifake`, `ai_gen`, `image_combined` | preserve per-dataset source boundaries | single image, spatial-only | `python -m train.image.run_image` | active |
 | Video Smoke | `video_only` | raw video | `celeb-df-v2`, `faceforensics++`, optional combined or `real-ai-videos` | identity-aware per dataset | `single`, `sequence`, or both | `python -m train.video.simulate_video_train` | active |
 | Video Spatial Registry | `video_only` | raw video | `celebdf`, `ffpp`, `video_combined`, `real_ai_videos`, `video_all` | identity-aware per dataset | single sampled frame | `python -m train.video.spa.run_video_spatial` | active runner surface, real timm-backed trainer for image-style backbones |
 | Video Temporal Registry | `video_only` | raw video | `celebdf`, `ffpp`, `video_combined`, `real_ai_videos`, `video_all` | identity-aware per dataset | contiguous clip | `python -m train.video.tmp.run_video_temporal` | active runner surface, real timm-backed trainer for image-style backbones |
@@ -51,7 +51,7 @@ Spatiotemporal ordered surface:
 
 See the detailed ordered list in:
 
-- `train/video/Experiment_List.md`
+- `train/video/video_commands.md`
 
 ## Research Reporting Notes
 

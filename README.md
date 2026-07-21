@@ -1,4 +1,4 @@
-﻿![DeepFake Detection Research Pipeline Banner](images/Banner.png)
+![DeepFake Detection Research Pipeline Banner](images/Banner.png)
 
 # DeepFake Detection Research Pipeline
 
@@ -113,7 +113,7 @@ Current image registry source of truth:
 
 Compatibility shims retained:
 
-- `train/image/image_model_configs.py`
+- `train/image/image_models.py`
 
 Active image families:
 
@@ -139,13 +139,13 @@ Active image module paths:
 
 ```bash
 python -m train.image.simulate_image_train
-python -m train.image.run_image_vit
-python -m train.image.run_image_convnext
-python -m train.image.run_image_swin
-python -m train.image.run_image_deit
-python -m train.image.run_image_convnextv2
-python -m train.image.run_image_maxvit
-python -m train.image.run_image_eva
+python -m train.image.run_image
+python -m train.image.run_image
+python -m train.image.run_image
+python -m train.image.run_image
+python -m train.image.run_image
+python -m train.image.run_image
+python -m train.image.run_image
 ```
 
 Current image save layout:
@@ -157,7 +157,7 @@ train/image/<family_name>/<exp_no>_<model_name>_<dataset_tag>/
 Current image evaluation export:
 
 ```bash
-python -m train.image.test_image_models --workers 8 --prefetch-factor 4 --batch-size 128
+python -m train.image.test_image --workers 8 --prefetch-factor 4 --batch-size 128
 ```
 
 Each completed image run can contain:
@@ -198,7 +198,7 @@ python -m train.video.st.run_video_spatiotemporal
 Current video evaluation export:
 
 ```bash
-python -m train.video.test_video_models --workers 8 --prefetch-factor 4 --batch-size 4
+python -m train.video.test_video --workers 8 --prefetch-factor 4 --batch-size 4
 ```
 
 Each completed video run can contain:
@@ -295,7 +295,7 @@ Training docs:
 - `train/image/image_model_config.md`
 - `train/video/video_commands.md`
 - `train/video/video_config.md`
-- `train/video/Experiment_List.md`
+- `train/video/video_commands.md`
 
 Evaluation and result docs:
 
@@ -303,9 +303,9 @@ Evaluation and result docs:
 - `graphs/README.md`
 - `graphs/graph_manifest.csv`
 - `train/eval_predictions_common.py`
-- `train/test_all_models.py`
-- `train/image/test_image_models.py`
-- `train/video/test_video_models.py`
+- `train/evaluate_all.py`
+- `train/image/test_image.py`
+- `train/video/test_video.py`
 
 Research lifecycle docs:
 
@@ -346,7 +346,7 @@ python -m train.video.simulate_video_train
 Run the first image baseline:
 
 ```bash
-python -m train.image.run_image_vit --exp IMG-EXP-01 --dataset-scope image_combined
+python -m train.image.run_image --exp IMG-EXP-01 --dataset-scope image_combined
 ```
 
 Resolve the first video baseline:

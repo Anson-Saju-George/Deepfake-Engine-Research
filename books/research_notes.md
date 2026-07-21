@@ -1,4 +1,4 @@
-﻿# Research Notes
+# Research Notes
 
 ## Scope
 
@@ -39,15 +39,15 @@ Current active paths:
 
 - smoke test: `python -m train.image.simulate_image_train`
 - runners:
-  - `python -m train.image.run_image_vit`
-  - `python -m train.image.run_image_convnext`
-  - `python -m train.image.run_image_swin`
-  - `python -m train.image.run_image_deit`
-  - `python -m train.image.run_image_convnextv2`
-  - `python -m train.image.run_image_maxvit`
-  - `python -m train.image.run_image_eva`
+  - `python -m train.image.run_image`
+  - `python -m train.image.run_image`
+  - `python -m train.image.run_image`
+  - `python -m train.image.run_image`
+  - `python -m train.image.run_image`
+  - `python -m train.image.run_image`
+  - `python -m train.image.run_image`
 - active registry: `train/image/image_models.py`
-- compatibility shim retained: `train/image/image_model_configs.py`
+- compatibility shim retained: `train/image/image_models.py`
 
 Important historical change:
 
@@ -537,7 +537,7 @@ Video training docs:
 
 - `train/video/video_config.md`
 - `train/video/video_commands.md`
-- `train/video/Experiment_List.md`
+- `train/video/video_commands.md`
 
 ## Reporting Guidance
 

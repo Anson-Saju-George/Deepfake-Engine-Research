@@ -1,4 +1,4 @@
-﻿# Research Knowledge Base
+# Research Knowledge Base
 
 This directory is the thesis-facing and journal-facing knowledge base for the repository.
 
@@ -88,7 +88,7 @@ Training implementation and command reference:
 - `train/image/image_commands.md`
 - `train/video/video_config.md`
 - `train/video/video_commands.md`
-- `train/video/Experiment_List.md`
+- `train/video/video_commands.md`
 
 This `books/` directory serves a different role:
 

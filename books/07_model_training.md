@@ -1,4 +1,4 @@
-﻿# Model Training
+# Model Training
 
 ## What This Stage Means
 
@@ -25,13 +25,13 @@ Active image files include:
 - `train/image/image_model_config.md`
 - `train/image/image_commands.md`
 - `train/image/simulate_image_train.py`
-- `train/image/run_image_vit.py`
-- `train/image/run_image_convnext.py`
-- `train/image/run_image_swin.py`
-- `train/image/run_image_deit.py`
-- `train/image/run_image_convnextv2.py`
-- `train/image/run_image_maxvit.py`
-- `train/image/run_image_eva.py`
+- `train/image/run_image.py`
+- `train/image/run_image.py`
+- `train/image/run_image.py`
+- `train/image/run_image.py`
+- `train/image/run_image.py`
+- `train/image/run_image.py`
+- `train/image/run_image.py`
 
 ### Active video research tree
 
@@ -42,7 +42,7 @@ Active video files include:
 - `train/video/video_models.py`
 - `train/video/video_commands.md`
 - `train/video/video_config.md`
-- `train/video/Experiment_List.md`
+- `train/video/video_commands.md`
 - `train/video/simulate_video_train.py`
 - `train/video/spa/run_video_spatial.py`
 - `train/video/tmp/run_video_temporal.py`
