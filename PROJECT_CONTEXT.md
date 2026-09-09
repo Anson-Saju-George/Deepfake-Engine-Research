@@ -73,5 +73,6 @@ fake/real counts, access status, and rejected candidates: **`proc/dataset_downlo
 ## 5. History / caveats worth knowing
 
 - Old **temporal vs spatiotemporal** runs share one trainer class — `VID-TMP-02` and `VID-ST-03` are numerically identical, **not** two distinct paradigms. The new design removes this ambiguity.
-- Old code had an **F1 positive-class inconsistency** (active eval: label 1 = real; reference `metrics.py`: label 1 = fake). State the positive class when quoting old F1s.
+- **Label convention (code-truth, preserved from the retired CONVENTIONS.md):** raw label values are **`real = 1`, `fake = 0`** for every dataset (set in `data/dataloader.py:DATASET_CONFIG`). This does not change.
+- Old code had an **F1 positive-class inconsistency** (active eval `train/eval_predictions_common.py`: label 1 = real is positive; reference `proc/code_snippets/metrics.py`: label 1 = fake). Accuracy/AUC are symmetric; **F1/precision/recall are not — always state which class is positive** when quoting old F1s. (Split/leakage rules and identity handling live in `data/splits.py` + `data/identity.py`.)
 - All 22 runs used **seed=42** — no multi-seed/significance is derivable from existing artifacts (a reviewer objection the new design fixes).

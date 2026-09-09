@@ -2,365 +2,116 @@
 
 # DeepFake Detection Research Pipeline
 
-> Research-grade image and video deepfake detection pipeline with protocol-aware loading, dataset-audit tooling, raw-video-first methodology, and reproducible experiment tracking.
+> Research pipeline for **video authenticity detection across two forensic regimes** —
+> face manipulation and fully synthetic video — with protocol-aware data loading,
+> dataset-audit tooling, whole-frame methodology, and reproducible experiment tracking.
 
-## Overview
+## What this project is now
 
-This repository is built around one central rule: image datasets, raw-video datasets, and derived frame folders should not be treated as the same experimental object by default.
+The scientific goal is **cross-regime generalization**, not "another universal detector."
+A video is either authentic or produced/altered by a generative model, and that spans two
+technically distinct phenomena:
 
-The current project state is organized around:
+| Regime | What "fake" means | Where the evidence lives | Train corpus |
+|---|---|---|---|
+| **Face manipulation** | A real recording with the face swapped/reenacted | A local blending seam / warp | FF++ (DF + DFD subset) |
+| **Fully synthetic** | The entire video generated from a prompt | Whole-frame: physics, texture, temporal incoherence | GenVideo |
 
-- a protocol-aware dataloader in `data/dataloader.py`
-- an active image training tree under `train/image/`
-- an active video research registry under `train/video/`
-- thesis-oriented research notes under `books/`
+The contribution is a progression of three questions — **cross-regime transfer (and its
+asymmetry) → genuine unification vs. two decision regions → survival under shortcut audits.**
 
-That separation is methodological, not cosmetic. It exists to keep the benchmark claims defensible in a thesis, journal paper, or technical audit.
+### Authoritative docs (read these first)
 
-## Current Results Snapshot
+| Doc | Role |
+|---|---|
+| **`PROJECT_CONTEXT.md`** (root) | whole-project scope, layout, caveats — start here |
+| **`papers/writing/PROJECT_VISION.md`** | why the problem matters (the vision) |
+| **`papers/writing/RESEARCH_QUESTIONS.md`** | the three RQs (the contribution) |
+| **`papers/writing/EXPERIMENT_DESIGN.md`** | the frozen experimental design (the *how*) — **authoritative** |
+| **`papers/writing/READING_LIST.md`** + `REFERENCES.bib` | tiered literature |
+| **`perf/PERFORMANCE_LOG.md`** (+ `PERFORMANCE_CONTEXT.md`) | all measured performance numbers |
 
-Current evaluated results are summarized in [Results.md](./Results.md).
+> **Note on framing.** The image-vs-video modality framing that earlier versions of this repo
+> were built around is **superseded** by `EXPERIMENT_DESIGN.md`. The 22 completed image/video
+> runs are **archived baseline evidence**, not the new paper's contribution (see below).
 
-Current leaders:
+## Design decisions (new direction)
 
-- best image run: `IMG-EXP-04 | ConvNeXt | convnext_base`
-  - accuracy: `0.9863`
-  - f1: `0.9863`
-  - roc_auc: `0.9968`
-- best video run: `VID-TMP-02 | ConvNeXt Sequence | convnext_large`
-  - accuracy: `0.9089`
-  - f1: `0.7841`
-  - roc_auc: `0.9594`
-- matching video result: `VID-ST-03 | ConvNeXt Hybrid | convnext_large`
-  - accuracy: `0.9089`
-  - f1: `0.7841`
-  - roc_auc: `0.9594`
+- **Whole-frame detection** — no face detection, no face cropping (the old face-crop pipeline is legacy).
+- **Two backbones**, not a zoo: **ConvNeXt-B** + a foundation encoder (**SigLIP-So400M** / DINOv2).
+- **Regime as the independent variable**, not architecture — the old temporal-head sweep is cut.
+- **Audited metrics**: AUROC + above-floor margin + recall@0.1%FPR + calibration, reported **per-dataset, never pooled**, with multi-seed + significance testing.
+- **Shortcut audits**: VidAudit-style controls + a 32×32 thumbnail diagnostic (RQ3).
 
-Current interpretation:
+## Datasets
 
-- image detection is materially stronger than the current video runs
-- `ConvNeXt` is the strongest family in the current completed evidence
-- `focal` loss underperformed on the completed spatial video comparison
+On disk (loose image jpgs read directly by the loader; videos as `.mp4`):
 
-## Dataset Snapshot
+- **Images:** `cifake`, `ai-generated-images-vs-real-images`
+- **Videos:** `celeb-df-v2`, `faceforensics++` (DF + DFD subset — see the honesty note below), `real-ai-videos`, `deepaction-v1`
 
-Current cleaned raw dataset truth:
+**Canonical registry** — sizes, real/fake counts, access status, planned pulls, and rejected
+candidates — is **`proc/dataset_downloader/DATASETS.md`** (with the action plan in `TODO.md`).
 
-- total raw samples: `192,016`
-- images: `179,988`
-- videos: `12,028`
-- labels: `99,740 fake`, `92,276 real`
+> **⚠ Naming honesty:** the on-disk `faceforensics++/` is **`Deepfakes` + Google/Jigsaw
+> `DeepFakeDetection` (DFD)** + reals — **not** the full 4-manipulation FF++. Cite both sources;
+> don't write "trained on FaceForensics++" implying DF/F2F/FS/NT. Full note in `DATASETS.md`.
 
-Primary image datasets:
+## Dataloader truth (`data/dataloader.py`)
 
-- `cifake`
-- `ai-generated-images-vs-real-images`
+The active, protocol-aware loader is still the data backbone. Label convention is
+**`real = 1`, `fake = 0`** across every dataset.
 
-Primary raw-video datasets:
+Protocols and sampling:
 
-- `celeb-df-v2`
-- `faceforensics++`
-- `real-ai-videos`
+- `image_only` — image-domain spatial learning (source train/test boundaries preserved; val carved from train).
+- `video_only` — raw-video learning; identity-aware grouped splitting.
+- `frame_only` / `combined_aux` — derived-frame and auxiliary mixed-media studies.
+- `mode="single"` — one sampled frame; `mode="sequence"` — contiguous clip (`seq_len`, `stride`). Train = random offset, eval = centered.
 
-Historical cleanup notes:
+Split/leakage/identity rules live in `data/splits.py` + `data/identity.py`; low-level
+label/split conventions were consolidated into `PROJECT_CONTEXT.md` and `DATASETS.md`.
 
-- `12` corrupted images were deleted from `ai-generated-images-vs-real-images`
-- `3` bad videos had already been removed historically due to old `moov`-type issues
+## Active code layout
 
-## Dataloader Truth
+| Path | What |
+|---|---|
+| `data/` | protocol-aware DataLoader, splits, identity, cache tools |
+| `train/image/` | active image trainer, registry (`image_models.py`), eval (`test_image.py`) |
+| `train/` | `eval_predictions_common.py`, `evaluate_all.py` (video path optional — video trainer archived) |
+| `proc/dataset_downloader/` | dataset registry + download tooling |
+| `proc/code_snippets/` | reference implementations (metrics, splits, SBI, perturbations, complexity profiler) |
+| `graphs/` | figure generator + rendered PNGs |
+| `books/` | lifecycle chapters (01–12) — paper-writing context (see its direction banner) |
+| `perf/` · `papers/` | performance record · the paper (writing/ + literature/) |
+| `temp/` | archived legacy (superseded trainers, old docs, old checkpoints) — not active |
 
-The active dataloader is `data/dataloader.py`.
+## Archived baseline (old framing)
 
-Supported protocol meanings:
+The completed **22 runs** (5 image, 17 video) live as archived evidence. Best image:
+`IMG-EXP-04` ConvNeXt-Base (F1 `0.9863`); best video: `VID-TMP-02` ConvNeXt-Large sequence
+(F1 `0.7841`, acc `0.9089`). Full tables + the archived experiment surface are in
+`books/08_model_evaluation.md`; the video trainer tree is archived under
+`temp/legacy_models/train_video/`. These are a face-centric baseline, **not** the contribution.
 
-- `image_only`: image-domain spatial learning
-- `video_only`: raw-video learning
-- `frame_only`: derived-frame experiments
-- `combined_aux`: auxiliary mixed-media studies
-
-Resolution rules:
-
-- `dtype="image"` resolves to image-only behavior
-- `dtype="video"` resolves to video-only behavior
-- `dtype="frame"` resolves to frame-only behavior
-
-Video sampling semantics:
-
-- `mode="single"`: one sampled frame from a raw video, used as the video-domain spatial baseline
-- `mode="sequence"`: contiguous ordered clip from a raw video
-- train clip sampling: random contiguous
-- eval clip sampling: center contiguous
-
-Split rules:
-
-- image experiments preserve original source dataset boundaries
-- image validation is derived from source training data
-- video and frame experiments use identity-aware grouped splitting
-
-## Current Training Structure
-
-### Active Image Tree
-
-The active image tree lives under `train/image/`.
-
-Current image command sheet:
-
-- `train/image/image_commands.md`
-
-Current image registry source of truth:
-
-- `train/image/image_models.py`
-
-Compatibility shims retained:
-
-- `train/image/image_models.py`
-
-Active image families:
-
-- ViT
-- ConvNeXt
-- Swin
-- DeiT
-- ConvNeXtV2
-- MaxViT
-- EVA
-
-Active image experiment ladder:
-
-- `IMG-EXP-01..03`: ViT
-- `IMG-EXP-04..06`: ConvNeXt
-- `IMG-EXP-07..08`: Swin
-- `IMG-EXP-09`: DeiT
-- `IMG-EXP-10..11`: ConvNeXtV2
-- `IMG-EXP-12`: MaxViT
-- `IMG-EXP-13..14`: EVA
-
-Active image module paths:
+## First commands
 
 ```bash
-python -m train.image.simulate_image_train
-python -m train.image.run_image
-python -m train.image.run_image
-python -m train.image.run_image
-python -m train.image.run_image
-python -m train.image.run_image
-python -m train.image.run_image
-python -m train.image.run_image
-```
+# Audit dataset truth
+python -m data.dataset_analyzer
 
-Current image save layout:
+# Validate image / raw-video readability
+python -m data.dataset_run --dtype image --num-workers 16
+python -m data.dataset_run --dtype video --num-workers 8
 
-```text
-train/image/<family_name>/<exp_no>_<model_name>_<dataset_tag>/
-```
+# Corpus + split distribution the pipeline would use
+python train_data_pipeline_pull.py --mode video --datasets celeb-df-v2 faceforensics++
 
-Current image evaluation export:
-
-```bash
+# Image baseline (archived-framing example; still runnable)
+python -m train.image.run_image --exp IMG-EXP-01 --dataset-scope image_combined
 python -m train.image.test_image --workers 8 --prefetch-factor 4 --batch-size 128
 ```
 
-Each completed image run can contain:
-
-- `test_predictions.csv`
-- `test_evaluation.json`
-
-### Active Video Research Tree
-
-The active video tree lives under `train/video/`.
-
-Current video command sheet:
-
-- `train/video/video_commands.md`
-
-Current video registry source of truth:
-
-- `train/video/video_models.py`
-
-Current video category packages:
-
-- `train/video/spa/`
-- `train/video/tmp/`
-- `train/video/st/`
-
-Current executable video modules:
-
-```bash
-python -m train.video.simulate_video_train
-python -m train.video.simulate_video_train_base
-python -m train.video.simulate_video_train_kornia
-python -m train.video.bad_video_test
-python -m train.video.spa.run_video_spatial
-python -m train.video.tmp.run_video_temporal
-python -m train.video.st.run_video_spatiotemporal
-```
-
-Current video evaluation export:
-
-```bash
-python -m train.video.test_video --workers 8 --prefetch-factor 4 --batch-size 4
-```
-
-Each completed video run can contain:
-
-- `test_predictions.csv`
-- `test_evaluation.json`
-
-Important current truth:
-
-- experiment resolution and runner layout are active
-- category-specific video runners now execute a real timm-backed trainer for image-style video backbones over the raw-video loader path
-- the separate smoke utility still exists for pipeline validation and decode benchmarking
-- native video backbones such as Video Swin, TimeSformer, and MViT remain a later extension area
-- the smoke path now supports:
-  - OpenCV decode
-  - optional FFmpeg-based hardware decode backends, including Intel Quick Sync via `--decode-backend ffmpeg_qsv`
-  - optional Kornia GPU augmentation
-  - alternate imbalance-handling loss variants
-  - bad-video auditing and logging
-  - per-split input-vs-compute timing
-- current stable runner default is the `cv2` decode path rather than `ffmpeg_qsv` or `decord`
-
-## Video Registry State
-
-The video registry is now organized into three independent categories.
-
-### Spatial
-
-Ordered by paradigm, family, and parameter scale:
-
-- `VID-SPA-01` Xception71
-- `VID-SPA-02` ConvNeXt-Base
-- `VID-SPA-03` ConvNeXt-Large
-- `VID-SPA-04` ConvNeXtV2-Base
-- `VID-SPA-05` ConvNeXtV2-Large
-- `VID-SPA-06` Swin-Base
-- `VID-SPA-07` Swin-Large
-- `VID-SPA-08` ViT-Base
-- `VID-SPA-09` EVA-Base
-- `VID-SPA-10` MaxViT-Base
-- `VID-SPA-11` MaxViT-Large
-
-### Temporal
-
-- `VID-TMP-01` ConvNeXt-Base sequence
-- `VID-TMP-02` ConvNeXt-Large sequence
-- `VID-TMP-03` ConvNeXtV2-Base sequence
-- `VID-TMP-04` Swin-Base sequence
-- `VID-TMP-05` Swin-Large sequence
-- `VID-TMP-06` MaxViT-Base sequence
-
-### Spatiotemporal
-
-- `VID-ST-01` Xception71 hybrid
-- `VID-ST-02` ConvNeXt-Base hybrid
-- `VID-ST-03` ConvNeXt-Large hybrid
-- `VID-ST-04` Swin-Base hybrid
-- `VID-ST-05` MaxViT-Base hybrid
-- `VID-ST-06` MaxViT-Large hybrid
-- `VID-ST-07` ConvNeXt-Large ConvLSTM (active, completed run on file)
-- `VID-ST-08` ConvNeXt-Large Hybrid Transformer (active, completed run on file)
-- `VID-ST-09` ConvNeXt-Large Hybrid TCN (active, completed run on file)
-
-`VID-ST-07..09` are all active in the current timm-backed runner surface and each has a completed run
-(`docs/Results.md`, `docs/REVISION_AUDIT.md`) — corrected here because an earlier version of this README
-called the whole `VID-ST-07..12` range "reserved native-video vacancies," which was stale against the
-completed evidence. Per `books/research_notes.md`, these are not native-video architectures: they reuse
-the same `TimmVideoClassifier`/`temporal_head` mechanism as the `tmp` category, just filed under `st`.
-`VID-ST-10..12` are not defined in the registry at all (no entry in `train/video/st/video_spatiotemporal_models.py`)
-and remain a genuinely open future extension, not an existing-but-inactive gap.
-
-## Shared Image Optimization Truth
-
-The active image trainers currently share one optimization stack by design:
-
-- optimizer: `AdamW`
-- scheduler: `CosineAnnealingLR`
-- base LR: `1e-4`
-- weight decay: `1e-4`
-- min LR: `1e-6`
-- warmup: `1` epoch
-- loss: `CrossEntropyLoss(label_smoothing=0.1)`
-- EMA decay: `0.999`
-- gradient clipping: `1.0`
-- best checkpoint metric: `val_f1`
-- early stopping patience: `3`
-- mixed precision on CUDA
-
-Current image baseline defaults:
-
-- epochs: `10`
-- batch size: `64`
-
-## Documentation Map
-
-Canonical data and audit docs:
-
-- `data/dataset.md`
-- `data/commands.md`
-
-Training docs:
-
-- `train/image/image_commands.md`
-- `train/image/image_model_config.md`
-- `train/video/video_commands.md`
-- `train/video/video_config.md`
-- `train/video/video_commands.md`
-
-Evaluation and result docs:
-
-- `Results.md`
-- `graphs/README.md`
-- `graphs/graph_manifest.csv`
-- `train/eval_predictions_common.py`
-- `train/evaluate_all.py`
-- `train/image/test_image.py`
-- `train/video/test_video.py`
-
-Research lifecycle docs:
-
-- `books/README.md`
-- `books/research_notes.md`
-- `books/experiment_matrix.md`
-- `books/06_model_selection.md`
-- `books/07_model_training.md`
-- `books/09_hyperparameter_tuning.md`
-
-## Recommended First Commands
-
-Audit dataset truth:
-
-```bash
-python -m data.dataset_analyzer
-```
-
-Validate image and raw-video readability:
-
-```bash
-python -m data.dataset_run --dtype image --num-workers 16
-python -m data.dataset_run --dtype video --num-workers 8
-```
-
-Smoke-test the image path:
-
-```bash
-python -m train.image.simulate_image_train
-```
-
-Smoke-test the raw-video path:
-
-```bash
-python -m train.video.simulate_video_train
-```
-
-Run the first image baseline:
-
-```bash
-python -m train.image.run_image --exp IMG-EXP-01 --dataset-scope image_combined
-```
-
-Resolve the first video baseline:
-
-```bash
-python -m train.video.spa.run_video_spatial --exp VID-SPA-01 --dataset-scope video_combined
-```
+> The new whole-frame extractor and cross-regime training entrypoints described in
+> `EXPERIMENT_DESIGN.md` are the next code to be written; the commands above exercise the
+> existing (image-side) pipeline and the dataset-audit tooling.

@@ -48,6 +48,17 @@ missing). c40 exact for the 3 missing, sampled for the rest. raw is sampled proj
 
 - **On disk now:** 4 types (`original`, `DeepFakeDetection_original`, `Deepfakes`,
   `DeepFakeDetection`) = ~26.15 GB. Missing: `Face2Face`, `FaceSwap`, `NeuralTextures` (4.76 GB).
+
+> **⚠ Paper-honesty note (preserved from the retired CONVENTIONS.md).** What is on disk is
+> **not "FaceForensics++."** FF++ proper is the 4-manipulation set (Deepfakes / Face2Face /
+> FaceSwap / NeuralTextures). The current on-disk copy is **`Deepfakes` (1,000) + Google/Jigsaw
+> `DeepFakeDetection` (DFD, 3,066)** fakes + **1,363 reals** (youtube + DFD actors); F2F/FS/NT are
+> absent. **Do not write "trained on FaceForensics++"** where it implies the full 4-manipulation
+> benchmark — call it "a subset of FF++ (Deepfakes) combined with the DeepFakeDetection dataset,"
+> and cite both. Class balance from real disk counts: **1,363 real / 4,066 fake = 25.11% real**;
+> to reach ~1:1 by clip-sampling at 1 clip/fake, reals need **~2.98 clips/video**. Recompute if
+> composition changes. **Consequence for LOMO:** with only two manipulation families present it is
+> a **2-config** comparison (DF↔DFD), not the 4-way the name implies.
 - **Plan:** wipe all and re-pull all 7 clean at c23 (see `TODO.md` Task 1).
 - **Why c23 is small:** H.264 CRF-23 on short clips → genuinely ~1.5–1.9 MB/video (confirmed on
   real files, not projected). c40 (CRF-40) ~0.2 MB/video. raw is absurd (~1.6 **TB**) — never used.
