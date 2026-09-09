@@ -1,3 +1,10 @@
+"""Shared evaluation-report building for image and video test runs.
+
+Label convention: see CONVENTIONS.md at the repo root before touching the
+F1/precision/recall calls below. pos_label=1 (real) here is one of two
+conventions live in this repo right now -- that document explains the
+other one (docs/code/metrics.py) and why the choice is currently deferred.
+"""
 from __future__ import annotations
 
 import csv
@@ -90,6 +97,9 @@ def build_evaluation_report(
     preds_arr = np.asarray(preds, dtype=int)
     probs_arr = np.asarray(prob_real, dtype=float)
 
+    # F1/precision/recall use sklearn's default pos_label=1 (real) -- see
+    # CONVENTIONS.md before changing this; it's one of two conventions
+    # currently live in this repo and the choice is deliberately deferred.
     metrics: dict[str, Any] = {
         "loss": _safe_float(mean_loss),
         "acc": float(accuracy_score(labels_arr, preds_arr)),

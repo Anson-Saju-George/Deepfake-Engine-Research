@@ -81,7 +81,7 @@ The second is optional and should be reported separately.
 
 The accepted active extractor is:
 
-- `proc/pre_process_videos.py`
+- `proc/pre/pre_process_videos.py`
 
 What it does:
 

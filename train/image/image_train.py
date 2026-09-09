@@ -6,9 +6,11 @@ the active protocol-aware dataloader and the finalized image-only split policy.
 
 from __future__ import annotations
 
+import contextlib
 import csv
 import json
 import random
+import sys
 import time
 from collections import Counter
 from copy import deepcopy
@@ -139,7 +141,12 @@ def dataset_scope_to_tag(dataset_scope: str) -> str:
     return IMAGE_DATASET_TAGS[dataset_scope]
 
 
-def build_vit_run_config(experiment_no: str, dataset_scope: str, batch_size: int | None = None) -> dict:
+def build_vit_run_config(
+    experiment_no: str,
+    dataset_scope: str,
+    batch_size: int | None = None,
+    seed: int | None = None,
+) -> dict:
     registry = get_image_experiment_registry()
     if experiment_no not in VIT_EXPERIMENT_IDS:
         raise ValueError(f"{experiment_no} is not a ViT image experiment")
@@ -151,7 +158,13 @@ def build_vit_run_config(experiment_no: str, dataset_scope: str, batch_size: int
     if batch_size is not None:
         config["batch_size"] = batch_size
 
+    resolved_seed = seed if seed is not None else DEFAULT_SEED
     run_name = f"{config['experiment_no']}_{config['model_name']}_{config['dataset_tag']}"
+    # Only suffix the run name when the seed differs from the default, so
+    # every existing completed-run path (all seed=42) stays unchanged, and
+    # a non-default seed no longer silently overwrites the seed=42 run dir.
+    if resolved_seed != DEFAULT_SEED:
+        run_name = f"{run_name}_seed{resolved_seed}"
     family_dir = FAMILY_DIR_NAMES.get(config["family"], config["family"])
     save_dir = Path("train") / "image" / family_dir / run_name
 
@@ -160,7 +173,7 @@ def build_vit_run_config(experiment_no: str, dataset_scope: str, batch_size: int
     config["save_dir"] = str(save_dir)
     config["best_metric"] = "val_f1"
     config["save_threshold"] = 0.80
-    config["seed"] = DEFAULT_SEED
+    config["seed"] = resolved_seed
     config["base_lr"] = 1e-4
     config["weight_decay"] = 1e-4
     config["min_lr"] = 1e-6

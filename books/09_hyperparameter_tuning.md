@@ -1,5 +1,9 @@
 ﻿# Hyperparameter Tuning
 
+> **Tuned defaults are measured, not guessed:** AMP bf16 · batch 4 · workers 12 · seq 16 ·
+> pyav decode · YuNet · cache on F:. Full sweep evidence (precision, `channels_last`,
+> `torch.compile`, batch 1–16, VRAM cliff) is in `perf/PERFORMANCE_LOG.md §2`.
+
 ## What This Stage Means
 
 Hyperparameter tuning adjusts the training recipe in a controlled way after the baseline methodology is already stable.
@@ -77,7 +81,7 @@ The video registry surface is now well organized, and the active image-style vid
 Why:
 
 - the current video runners now execute a real timm-backed trainer for the image-style video backbones in the active registry
-- reserved native-video IDs `VID-ST-07..12` remain inactive because dedicated native-video support is not implemented yet
+- `VID-ST-07..09` are active (temporal-head variants, not native-video architectures); only `VID-ST-10..12` remain undefined because dedicated native-video support is not implemented yet
 - current video findings already show that sequence length and base learning rate can materially affect outcome quality
 
 So the present tuning truth is:

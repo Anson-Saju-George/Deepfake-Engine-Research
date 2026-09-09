@@ -9,7 +9,15 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from train.image.test_image import discover_image_runs, evaluate_image_run
-from train.video.test_video import discover_video_runs, evaluate_video_run
+
+# The video trainer was archived to temp/legacy_models/ when the project moved to the
+# whole-frame cross-regime design (see perf/PROJECT_CONTEXT.md). Video evaluation is
+# therefore optional: if the video package is absent, the image path still works.
+try:
+    from train.video.test_video import discover_video_runs, evaluate_video_run
+    _VIDEO_AVAILABLE = True
+except ImportError:
+    _VIDEO_AVAILABLE = False
 
 
 def parse_args() -> argparse.Namespace:
@@ -32,7 +40,10 @@ def main() -> None:
     args = parse_args()
 
     do_images = not args.video_only
-    do_videos = not args.image_only
+    do_videos = (not args.image_only) and _VIDEO_AVAILABLE
+    if args.video_only and not _VIDEO_AVAILABLE:
+        print("video trainer is archived (train/video/ removed); nothing to evaluate.")
+        return
     image_runs = discover_image_runs() if do_images else []
     video_runs = discover_video_runs() if do_videos else []
 

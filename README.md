@@ -258,7 +258,17 @@ Ordered by paradigm, family, and parameter scale:
 - `VID-ST-04` Swin-Base hybrid
 - `VID-ST-05` MaxViT-Base hybrid
 - `VID-ST-06` MaxViT-Large hybrid
-- `VID-ST-07..12` are reserved native-video vacancies and are not active in the current timm-backed runner surface
+- `VID-ST-07` ConvNeXt-Large ConvLSTM (active, completed run on file)
+- `VID-ST-08` ConvNeXt-Large Hybrid Transformer (active, completed run on file)
+- `VID-ST-09` ConvNeXt-Large Hybrid TCN (active, completed run on file)
+
+`VID-ST-07..09` are all active in the current timm-backed runner surface and each has a completed run
+(`docs/Results.md`, `docs/REVISION_AUDIT.md`) — corrected here because an earlier version of this README
+called the whole `VID-ST-07..12` range "reserved native-video vacancies," which was stale against the
+completed evidence. Per `books/research_notes.md`, these are not native-video architectures: they reuse
+the same `TimmVideoClassifier`/`temporal_head` mechanism as the `tmp` category, just filed under `st`.
+`VID-ST-10..12` are not defined in the registry at all (no entry in `train/video/st/video_spatiotemporal_models.py`)
+and remain a genuinely open future extension, not an existing-but-inactive gap.
 
 ## Shared Image Optimization Truth
 

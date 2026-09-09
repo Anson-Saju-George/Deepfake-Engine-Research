@@ -58,6 +58,16 @@ DEFAULT_SEQUENCE_LEN = 8
 DEFAULT_PREFETCH_FACTOR = int(os.getenv("DF_PREFETCH_FACTOR", "4"))
 FFMPEG_BIN = os.getenv("DF_FFMPEG_BIN", "ffmpeg")
 FFPROBE_BIN = os.getenv("DF_FFPROBE_BIN", "ffprobe")
+# T1.8: root config override. Default value ("datasets") is unchanged, so any
+# caller not setting DF_DATASET_ROOT gets identical behavior to before.
+DEFAULT_DATASET_ROOT = os.getenv("DF_DATASET_ROOT", "datasets")
+DEFAULT_STRIDE = 1
+# T1.7: decode-failure policy is a MECHANISM only. Default is unchanged
+# ("legacy_zero" == today's exact silent zero-tensor behavior). Switching the
+# default is Open Decision #2 in FIXTURE_PLAN.md, gated on T1.0's blast-radius
+# numbers -- do not change this default without that decision being made.
+DECODE_FAILURE_POLICIES = {"legacy_zero", "raise"}
+DEFAULT_DECODE_FAILURE_POLICY = os.getenv("DF_DECODE_FAILURE_POLICY", "legacy_zero")
 
 
 def _ffmpeg_output_size():
@@ -150,12 +160,29 @@ def build_loader_kwargs(batch_size, shuffle=False, drop_last=False):
 # =========================
 
 class DeepFakeDataset(Dataset):
-    def __init__(self, samples, transform=None, mode="single", seq_len=8, clip_sampling="random"):
+    def __init__(
+        self,
+        samples,
+        transform=None,
+        mode="single",
+        seq_len=8,
+        clip_sampling="random",
+        stride=DEFAULT_STRIDE,
+        decode_failure_policy=None,
+    ):
         self.samples = samples
         self.transform = transform
         self.mode = mode
         self.seq_len = seq_len
         self.clip_sampling = clip_sampling
+        self.stride = max(1, int(stride))
+        resolved_policy = decode_failure_policy or DEFAULT_DECODE_FAILURE_POLICY
+        if resolved_policy not in DECODE_FAILURE_POLICIES:
+            raise ValueError(
+                f"Unsupported decode_failure_policy: {resolved_policy!r}. "
+                f"Supported: {sorted(DECODE_FAILURE_POLICIES)}"
+            )
+        self.decode_failure_policy = resolved_policy
         self._video_meta_cache = {}
         self._vr_cache = OrderedDict()
         self._vr_cache_limit = max(1, int(os.getenv("DF_VIDEO_READER_CACHE", "32")))
@@ -373,15 +400,34 @@ class DeepFakeDataset(Dataset):
         )
 
     def _contiguous_indices(self, total_frames):
+        # T1.5: stride support. At stride=1 (the default) this produces
+        # byte-identical output to the original implementation -- verified
+        # by construction: span == self.seq_len when stride == 1, so every
+        # branch below collapses to the original's logic exactly.
+        stride = self.stride
+        span = (self.seq_len - 1) * stride + 1
+
         if total_frames <= 0:
             return [0] * self.seq_len
-        if total_frames <= self.seq_len:
-            return list(range(total_frames)) + [max(total_frames - 1, 0)] * (self.seq_len - total_frames)
+
+        if total_frames <= span:
+            if self.seq_len > 1:
+                # Not enough frames to cover the requested stride*seq_len span.
+                # Shrink stride to the tightest value that fits, rather than
+                # silently ignoring the request or crashing.
+                stride = max(1, (total_frames - 1) // (self.seq_len - 1))
+                span = (self.seq_len - 1) * stride + 1
+            if total_frames <= span:
+                # Still doesn't fit even at stride=1 (very short video/clip):
+                # pad by repeating the last available frame, same as before.
+                base = list(range(min(total_frames, self.seq_len)))
+                return base + [max(total_frames - 1, 0)] * (self.seq_len - len(base))
+
         if self.clip_sampling == "center":
-            start = max((total_frames - self.seq_len) // 2, 0)
+            start = max((total_frames - span) // 2, 0)
         else:
-            start = random.randint(0, total_frames - self.seq_len)
-        return list(range(start, start + self.seq_len))
+            start = random.randint(0, total_frames - span)
+        return [start + i * stride for i in range(self.seq_len)]
 
     def __getitem__(self, idx):
         path, label, dtype = self.samples[idx]
@@ -474,6 +520,16 @@ class DeepFakeDataset(Dataset):
         except Exception as exc:
             if dtype == "video":
                 self._log_bad_video(path, "getitem_exception", repr(exc))
+            # T1.7: decode-failure policy. Default ("legacy_zero") falls through
+            # to the exact original behavior below -- silent zero-tensor with
+            # the original label, unflagged. "raise" is the only other wired
+            # policy right now; "zero_with_flag" is deliberately NOT implemented
+            # here because it requires changing the __getitem__ return contract
+            # (2-tuple -> 3-tuple) on every call site, which needs to land
+            # together with the trainer-side consumer of that flag (T2b), not
+            # silently in the data layer alone. See FIXTURE_PLAN.md T1.7/S7#2.
+            if self.decode_failure_policy == "raise":
+                raise
             shape = (3, 224, 224) if self.mode == "single" else (self.seq_len, 3, 224, 224)
             return torch.zeros(shape), label
 
@@ -482,8 +538,10 @@ class DeepFakeDataset(Dataset):
 # =========================
 
 class _LegacyDatasetBuilder:
-    def __init__(self, root="datasets"):
-        self.root = Path(root)
+    def __init__(self, root=None):
+        # T1.8: root=None resolves to DEFAULT_DATASET_ROOT (env DF_DATASET_ROOT,
+        # falling back to "datasets" -- identical to the old hardcoded default).
+        self.root = Path(root if root is not None else DEFAULT_DATASET_ROOT)
         self.samples = []
 
     def _is_image_file(self, path):
@@ -665,10 +723,18 @@ class DatasetBuilder(_LegacyDatasetBuilder):
     - frame_only -> auxiliary derived-frame experiments
     """
 
-    def __init__(self, root="datasets", seed=42):
+    def __init__(self, root=None, seed=42, manifest_path=None):
         super().__init__(root=root)
         self.seed = seed
         self.records = []
+        # T3: optional integrity-manifest-driven filtering. None (default) =
+        # unchanged behavior, every discovered file is kept, exactly as
+        # before. When set, build() drops files the manifest marked invalid
+        # (produced by `python -m proc.integrity_scan`) -- this is the
+        # "drop" decode-failure policy T1.7 deliberately deferred to here,
+        # since dropping requires a pre-computed validity list, not a
+        # per-__getitem__ decision.
+        self.manifest_path = manifest_path
 
     def _rng(self):
         return random.Random(self.seed)
@@ -837,6 +903,26 @@ class DatasetBuilder(_LegacyDatasetBuilder):
         self.scan_videos()
         self.scan_frames()
         print(f"Total samples: {len(self.samples)}")
+        if self.manifest_path:
+            self._apply_manifest_filter()
+
+    def _apply_manifest_filter(self):
+        from proc.manifest import load_manifest
+
+        manifest = load_manifest(self.manifest_path)
+        invalid = manifest.invalid_paths()
+        if not invalid:
+            print(f"Manifest {self.manifest_path}: 0 invalid files, nothing filtered.")
+            return
+
+        before = len(self.samples)
+        self.samples = [s for s in self.samples if s[0] not in invalid]
+        self.records = [r for r in self.records if r["path"] not in invalid]
+        removed = before - len(self.samples)
+        print(
+            f"Manifest {self.manifest_path}: dropped {removed} sample(s) marked invalid "
+            f"({len(invalid)} total invalid entries in manifest, some may not match current discovery)."
+        )
 
     def _resolve_protocol(self, dtype=None, protocol=None):
         if protocol:
@@ -983,6 +1069,9 @@ class DatasetBuilder(_LegacyDatasetBuilder):
         val_ratio=None,
         train_transform=None,
         eval_transform=None,
+        split_engine="legacy",
+        stride=DEFAULT_STRIDE,
+        decode_failure_policy=None,
     ):
         split_bundle = self.prepare_records(
             dtype=dtype,
@@ -991,6 +1080,7 @@ class DatasetBuilder(_LegacyDatasetBuilder):
             balanced=balanced,
             train_ratio=train_ratio,
             val_ratio=val_ratio,
+            split_engine=split_engine,
         )
         resolved_protocol = split_bundle["protocol"]
         train_records = split_bundle["train"]
@@ -1030,18 +1120,274 @@ class DatasetBuilder(_LegacyDatasetBuilder):
 
         return (
             DataLoader(
-                DeepFakeDataset(train, tf_train, mode, seq_len, clip_sampling=clip_sampling_train),
+                DeepFakeDataset(
+                    train, tf_train, mode, seq_len, clip_sampling=clip_sampling_train,
+                    stride=stride, decode_failure_policy=decode_failure_policy,
+                ),
                 **build_loader_kwargs(batch_size=batch_size, shuffle=True, drop_last=True),
             ),
             DataLoader(
-                DeepFakeDataset(val, tf_val, mode, seq_len, clip_sampling=clip_sampling_eval),
+                DeepFakeDataset(
+                    val, tf_val, mode, seq_len, clip_sampling=clip_sampling_eval,
+                    stride=stride, decode_failure_policy=decode_failure_policy,
+                ),
                 **build_loader_kwargs(batch_size=batch_size),
             ),
             DataLoader(
-                DeepFakeDataset(test, tf_val, mode, seq_len, clip_sampling=clip_sampling_eval),
+                DeepFakeDataset(
+                    test, tf_val, mode, seq_len, clip_sampling=clip_sampling_eval,
+                    stride=stride, decode_failure_policy=decode_failure_policy,
+                ),
                 **build_loader_kwargs(batch_size=batch_size),
             )
         )
+
+    def _prepare_video_identity_v2(
+        self,
+        records,
+        train_ratio=DEFAULT_VIDEO_TRAIN_RATIO,
+        val_ratio=DEFAULT_VIDEO_VAL_RATIO,
+        max_clips=8,
+    ):
+        """T1.3/T1.4: identity-disjoint split via data/splits.py, with a hard,
+        non-bypassable leakage check, plus asymmetric clip-count balancing.
+
+        NOT the default (split_engine="identity_v2" opt-in only) -- see the
+        module-level note above DATASET_REGISTRY in data/dataset_registry.py
+        and FIXTURE_PLAN.md T1.3 for why: this groups FF++ actor-pair files
+        and Celeb-DF two-identity fake videos correctly, which the legacy
+        path did not, so split composition (and therefore counts) differs
+        from the legacy path by design, not by bug.
+
+        Returns (train, val, test) as plain dict records in the SAME shape
+        _prepare_video_only returns, so callers don't need to know which
+        engine produced them. Train records are repeated per-video according
+        to the asymmetric balance (n_clips); DeepFakeDataset's per-call
+        random clip-start sampling means each repetition yields a different
+        sampled clip across epochs without any DeepFakeDataset changes.
+        """
+        from collections import defaultdict as _defaultdict
+        from data.splits import build_record, assign_splits, check_leakage, balance_by_clip_sampling, summarize
+
+        by_dataset = _defaultdict(list)
+        for record in records:
+            by_dataset[record["dataset"]].append(record)
+
+        train_out, val_out, test_out = [], [], []
+        ratios = (train_ratio, val_ratio, max(0.0, 1.0 - train_ratio - val_ratio))
+
+        for dataset_name, dataset_records in by_dataset.items():
+            if dataset_name == "faceforensics++":
+                from data.identity import detect_ffpp_manipulation
+
+                video_records = [
+                    build_record(
+                        r["path"], label=r["label"], dataset=dataset_name,
+                        manipulation=detect_ffpp_manipulation(r["path"]),
+                    )
+                    for r in dataset_records
+                ]
+            else:
+                video_records = [
+                    build_record(r["path"], label=r["label"], dataset=dataset_name)
+                    for r in dataset_records
+                ]
+
+            if dataset_name == "celeb-df-v2":
+                assigned = self._assign_celebdf_splits(video_records, ratios=ratios)
+            else:
+                assigned = assign_splits(video_records, seed=self.seed, ratios=ratios)
+                leaks = check_leakage(assigned)
+                if leaks:
+                    raise RuntimeError(
+                        f"Identity leakage detected in dataset {dataset_name!r}, refusing to "
+                        f"build a split: {leaks[:10]}{' ...(+more)' if len(leaks) > 10 else ''}"
+                    )
+
+            balance_by_clip_sampling(assigned, split="train", max_clips=max_clips)
+            print(f"[identity_v2] {dataset_name}:")
+            print(summarize(assigned))
+
+            source_by_path = {r["path"]: r for r in dataset_records}
+            for video_record in assigned:
+                source = source_by_path[video_record.path]
+                target = {"train": train_out, "val": val_out, "test": test_out}[video_record.split]
+                repeats = video_record.n_clips if video_record.split == "train" else 1
+                for _ in range(max(1, repeats)):
+                    target.append(dict(source))
+
+        return train_out, val_out, test_out
+
+    def _assign_celebdf_splits(self, video_records, ratios):
+        """Celeb-DF-v2 special case: honor the dataset's official published
+        test list instead of running the generic identity-graph split on it.
+
+        Why: verified empirically (see FIXTURE_PLAN.md S7 Open Decision #8)
+        that celeb-df-v2's fake videos densely cross-link identities into a
+        few giant connected components, so a generic union-find identity
+        split can produce a 0%-real val/test split. The dataset's own
+        authors solved this by hand-curating List_of_testing_videos.txt
+        (178 real / 340 fake, verified against the file). The standard
+        community protocol for this dataset trains on everything NOT in
+        that list and evaluates on it -- WITHOUT an additional identity-
+        disjointness requirement between the official test set and the
+        training pool, since the official split is the accepted benchmark
+        contract, not an artifact needing further leakage-proofing. Every
+        published Celeb-DF-v2 result uses this same protocol; enforcing our
+        own additional identity-disjointness on top of it would make results
+        incomparable to the literature for no correctness benefit.
+
+        check_leakage() therefore only runs on the (train, val) remainder we
+        still control, not across the official-test boundary -- that
+        boundary is fixed by the dataset's publishers, not us.
+        """
+        from data.splits import (
+            assign_splits, check_leakage, load_celebdf_official_test_list,
+            is_in_celebdf_official_test,
+        )
+
+        official_list_path = self.root / "videos" / "celeb-df-v2" / "List_of_testing_videos.txt"
+        if not official_list_path.exists():
+            print(
+                f"[identity_v2] celeb-df-v2: official test list not found at "
+                f"{official_list_path} -- falling back to the generic identity-graph "
+                f"split for this dataset (may produce a low-real-content eval split; "
+                f"see FIXTURE_PLAN.md S7 Open Decision #8)."
+            )
+            assigned = assign_splits(video_records, seed=self.seed, ratios=ratios)
+            leaks = check_leakage(assigned)
+            if leaks:
+                raise RuntimeError(
+                    f"Identity leakage detected in celeb-df-v2, refusing to build a split: "
+                    f"{leaks[:10]}{' ...(+more)' if len(leaks) > 10 else ''}"
+                )
+            return assigned
+
+        official_entries = load_celebdf_official_test_list(official_list_path)
+        official_test = []
+        remaining = []
+        for record in video_records:
+            if is_in_celebdf_official_test(record.path, official_entries):
+                record.split = "test"
+                official_test.append(record)
+            else:
+                remaining.append(record)
+
+        train_ratio, val_ratio, _test_ratio = ratios
+        pool = train_ratio + val_ratio
+        remainder_ratios = (
+            (train_ratio / pool, val_ratio / pool, 0.0) if pool > 0 else (0.7, 0.3, 0.0)
+        )
+        remaining_assigned = assign_splits(remaining, seed=self.seed, ratios=remainder_ratios)
+
+        leaks = check_leakage(remaining_assigned)
+        if leaks:
+            raise RuntimeError(
+                f"Identity leakage detected WITHIN the celeb-df-v2 train/val remainder "
+                f"(official test boundary is intentionally excluded from this check -- "
+                f"see _assign_celebdf_splits docstring), refusing to build a split: "
+                f"{leaks[:10]}{' ...(+more)' if len(leaks) > 10 else ''}"
+            )
+
+        print(
+            f"[identity_v2] celeb-df-v2: using official test list "
+            f"({len(official_test)} videos: "
+            f"{sum(1 for r in official_test if r.label == 1)} real, "
+            f"{sum(1 for r in official_test if r.label == 0)} fake) "
+            f"-- train/val identity-split over the remaining {len(remaining)} videos"
+        )
+        return remaining_assigned + official_test
+
+    def prepare_lomo_split(self, lomo_config, train_ratio=DEFAULT_VIDEO_TRAIN_RATIO, val_ratio=DEFAULT_VIDEO_VAL_RATIO):
+        """T2b: leave-one-manipulation-out. Builds an identity_v2 split over
+        faceforensics++ (the only dataset with a manipulation-type concept --
+        Celeb-DF/real-ai-videos have none), then partitions it into
+        (train_pool, unseen_test_pool) for the given LOMO config via
+        data/splits.py:filter_for_lomo.
+
+        Only `lomo_config["test_manipulation"]` is trusted from the input --
+        `train_manipulations` is ALWAYS rebuilt here from the manipulations
+        actually present in the discovered corpus, minus the held-out one.
+        This is deliberate, not redundant with data/splits.py:usable_lomo_configs():
+        a real bug was caught during this session where a raw lomo_configs()
+        entry's train_manipulations (the nominal 4 standard FF++ manipulations)
+        silently excluded every DeepFakeDetection fake video from training --
+        not held out as unseen, not trained on, just dropped, because
+        "DeepFakeDetection" was never one of the 4 standard names. Rebuilding
+        here means that mistake can't recur even if a caller passes a raw,
+        unfiltered config instead of usable_lomo_configs()'s output.
+
+        Returns (train_samples, test_samples) as (path, label, dtype) tuples,
+        the same shape DeepFakeDataset already consumes.
+        """
+        from data.identity import detect_ffpp_manipulation
+        from data.splits import build_record, assign_splits, check_leakage, filter_for_lomo, manipulations_present
+
+        self.build()
+        ffpp_records = self._filter_records(dtype="video", dataset_names=["faceforensics++"])
+        video_records = [
+            build_record(
+                r["path"], label=r["label"], dataset="faceforensics++",
+                manipulation=detect_ffpp_manipulation(r["path"]),
+            )
+            for r in ffpp_records
+        ]
+
+        present = manipulations_present(video_records)
+        test_manipulation = lomo_config["test_manipulation"]
+        if test_manipulation not in present:
+            raise ValueError(
+                f"LOMO test_manipulation {test_manipulation!r} is not present in this corpus "
+                f"(present: {sorted(present)}). Use data/splits.py:usable_lomo_configs() to "
+                f"only generate configs this corpus can actually run."
+            )
+        resolved_config = dict(lomo_config)
+        resolved_config["train_manipulations"] = sorted(present - {test_manipulation})
+
+        ratios = (train_ratio, val_ratio, max(0.0, 1.0 - train_ratio - val_ratio))
+        assigned = assign_splits(video_records, seed=self.seed, ratios=ratios)
+        leaks = check_leakage(assigned)
+        if leaks:
+            raise RuntimeError(
+                f"Identity leakage detected while building the LOMO base split, refusing to "
+                f"proceed: {leaks[:10]}{' ...(+more)' if len(leaks) > 10 else ''}"
+            )
+
+        train_pool, test_pool = filter_for_lomo(assigned, resolved_config)
+        train_samples = [(r.path, r.label, "video") for r in train_pool]
+        test_samples = [(r.path, r.label, "video") for r in test_pool]
+        print(
+            f"[lomo:{resolved_config['name']}] train={len(train_samples)} "
+            f"(manipulations={resolved_config['train_manipulations']}) | "
+            f"unseen_test={len(test_samples)} (manipulation={test_manipulation})"
+        )
+        return train_samples, test_samples
+
+    def build_multi_clip_eval_samples(self, records, n_clips=5):
+        """T1.6: multi-clip inference sampling. Repeats each record's sample
+        n_clips times so DeepFakeDataset's per-call random clip-start sampling
+        (mode="sequence", clip_sampling="random") yields n_clips distinct
+        clips per video. Returns (samples, video_ids); video_ids[i] identifies
+        which source video samples[i] came from (its path is already a stable
+        unique identifier) -- group predictions back by video_id and feed the
+        resulting {video_id: [clip_score, ...]} to docs/code/metrics.py's
+        aggregate_clips()/video_scores_from_clips(). NOTE: pass
+        clip_sampling="center" here and every repeat will be the SAME clip --
+        use "random" (or a future evenly-spaced sampler, not yet implemented)
+        for genuine multi-clip coverage.
+        """
+        samples = []
+        video_ids = []
+        for record in records:
+            sample = (
+                self._record_to_sample(record)
+                if isinstance(record, dict)
+                else (record["path"], record["label"], record["dtype"])
+            )
+            for _ in range(max(1, n_clips)):
+                samples.append(sample)
+                video_ids.append(sample[0])
+        return samples, video_ids
 
     def prepare_records(
         self,
@@ -1051,6 +1397,7 @@ class DatasetBuilder(_LegacyDatasetBuilder):
         balanced=True,
         train_ratio=DEFAULT_VIDEO_TRAIN_RATIO,
         val_ratio=None,
+        split_engine="legacy",
     ):
         self.build()
         resolved_protocol = self._resolve_protocol(dtype=dtype, protocol=protocol)
@@ -1062,7 +1409,18 @@ class DatasetBuilder(_LegacyDatasetBuilder):
             else:
                 val_ratio = 0.2
 
-        if resolved_protocol == "image_only":
+        if split_engine not in {"legacy", "identity_v2"}:
+            raise ValueError(f"Unsupported split_engine: {split_engine!r}")
+
+        used_identity_v2 = False
+        if split_engine == "identity_v2" and resolved_protocol in {"video_only", "frame_only"}:
+            train_records, val_records, test_records = self._prepare_video_identity_v2(
+                filtered_records,
+                train_ratio=train_ratio,
+                val_ratio=val_ratio,
+            )
+            used_identity_v2 = True
+        elif resolved_protocol == "image_only":
             train_records, val_records, test_records = self._prepare_image_only(filtered_records)
         elif resolved_protocol == "video_only":
             train_records, val_records, test_records = self._prepare_video_only(
@@ -1085,11 +1443,14 @@ class DatasetBuilder(_LegacyDatasetBuilder):
         else:
             raise ValueError(f"Unsupported protocol: {resolved_protocol}")
 
-        if balanced:
+        # identity_v2 already balances via asymmetric clip sampling; applying
+        # the legacy oversample-balance on top would double-balance.
+        if balanced and not used_identity_v2:
             train_records = self._apply_class_balance(train_records)
 
         return {
             "protocol": resolved_protocol,
+            "split_engine": split_engine if used_identity_v2 else "legacy",
             "train": train_records,
             "val": val_records,
             "test": test_records,

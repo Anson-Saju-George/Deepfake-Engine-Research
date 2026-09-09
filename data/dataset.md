@@ -73,8 +73,8 @@ Latest repo progress relevant to the data pipeline:
 - `video_only` with `mode="sequence"` is the spatial+temporal path on raw videos
 - extracted frame folders are now supported as a first-class media type through `dtype="frame"` and `protocol="frame_only"`
 - `data.image_video_frame` was added to analyze images, videos, and derived frame folders together
-- `proc/pre_process_videos.py` now discovers videos through `DatasetBuilder` instead of maintaining a separate scan path
-- `proc/pre_process_videos.py` is continuation-safe at the video-folder level:
+- `proc/pre/pre_process_videos.py` now discovers videos through `DatasetBuilder` instead of maintaining a separate scan path
+- `proc/pre/pre_process_videos.py` is continuation-safe at the video-folder level:
 - complete frame folders with matching manifests are skipped on rerun
 - partial or stale frame folders are refreshed automatically on rerun
 - old legacy Python utilities that were sitting directly under `datasets/` were moved to `datasets/temp/` to keep the active dataset tree cleaner
@@ -122,7 +122,7 @@ The repository currently has three distinct data-layer roles. These should not b
 
 ### Optional materialization path
 
-- `proc/pre_process_videos.py`
+- `proc/pre/pre_process_videos.py`
 - this is an optional active utility that materializes derived frame folders from dataloader-discovered videos
 - it is not required for the default raw-video training path
 - it should be described as preprocessing for derived frame experiments, not as a mandatory step for the core dataset pipeline
@@ -658,7 +658,7 @@ Recommended usage:
 - mixed-media loader smoke test:
 - `python -m data.image_video_frame --smoke-loader`
 
-### `python -m proc.pre_process_videos`
+### `python -m proc.pre.pre_process_videos`
 
 Purpose:
 
@@ -682,11 +682,11 @@ Continuation behavior:
 Recommended usage:
 
 - quick smoke run:
-- `python -m proc.pre_process_videos --datasets celeb-df-v2 --max-frames 32 --limit 100`
+- `python -m proc.pre.pre_process_videos --datasets celeb-df-v2 --max-frames 32 --limit 100`
 - training-oriented derived frame materialization:
-- `python -m proc.pre_process_videos --datasets celeb-df-v2 --max-frames 64`
+- `python -m proc.pre.pre_process_videos --datasets celeb-df-v2 --max-frames 64`
 - full-corpus bounded extraction:
-- `python -m proc.pre_process_videos --max-frames 64`
+- `python -m proc.pre.pre_process_videos --max-frames 64`
 
 Important note:
 
@@ -786,7 +786,7 @@ Recommendation:
 - `data/dataset_fix.py`
 - `data/video_frame_stats.py`
 - `data/image_video_frame.py`
-- `proc/pre_process_videos.py` as the optional active frame-materialization utility
+- `proc/pre/pre_process_videos.py` as the optional active frame-materialization utility
 
 ### Legacy scripts
 
@@ -858,7 +858,7 @@ Recommendation:
 - despite the name, current code is a frame extraction utility
 - writes sampled frames to `frames/`
 
-### `proc/pre_process_videos.py`
+### `proc/pre/pre_process_videos.py`
 
 - optional active frame-materialization utility for full-video frame extraction
 - no longer hard-codes a synthetic `16`-frame representation

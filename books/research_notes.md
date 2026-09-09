@@ -9,7 +9,7 @@ Primary anchors:
 - `data/dataloader.py`
 - `data/dataset.md`
 - `data/commands.md`
-- `proc/pre_process_videos.py`
+- `proc/pre/pre_process_videos.py`
 - `train/image/`
 - `train/video/`
 
@@ -89,7 +89,7 @@ Current video execution truth:
 - resolved configs, dataset scopes, and save paths are active
 - current category runners execute a real timm-backed video trainer for image-style video backbones
 - the separate raw-video smoke path still exists for pipeline validation
-- reserved native-video IDs `VID-ST-07..12` are not active in the current runner surface
+- `VID-ST-07..09` (ConvLSTM/Hybrid Transformer/Hybrid TCN) are active with completed runs; only `VID-ST-10..12` (undefined in the registry) remain a future native-video extension
 - the raw-video smoke path supports optional FFmpeg hardware decode backends, OpenCV decode, bad-video auditing, and timing instrumentation
 
 Active video runners:
@@ -269,7 +269,7 @@ Spatiotemporal ordered ladder:
 - `VID-ST-04` Swin-Base hybrid
 - `VID-ST-05` MaxViT-Base hybrid
 - `VID-ST-06` MaxViT-Large hybrid
-- `VID-ST-07..12` are reserved native-video vacancies and are not active in the current timm-backed runner surface
+- `VID-ST-07` ConvLSTM, `VID-ST-08` Hybrid Transformer, and `VID-ST-09` Hybrid TCN are all active with completed runs (see Current Saved Result Snapshot below); only `VID-ST-10..12` (not defined in the registry) remain a future native-video extension
 
 ## Current Experiment Record Truth
 
@@ -549,4 +549,4 @@ The thesis or paper should state clearly that:
 - the active image tree was migrated into `train/image/`
 - the active video research tree was reorganized into `spa`, `tmp`, and `st`
 - the current video registry and runner surface are active and execute a real timm-backed trainer for image-style backbones
-- reserved native-video IDs `VID-ST-07..12` are intentionally inactive in the current runner surface
+- `VID-ST-07..09` are active (ConvLSTM/Hybrid Transformer/Hybrid TCN temporal-head variants, not native-video architectures); only `VID-ST-10..12` remain undefined/future

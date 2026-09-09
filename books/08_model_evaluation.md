@@ -1,5 +1,10 @@
 ﻿# Model Evaluation
 
+> **Numbers reference:** all throughput, latency, VRAM, and model-complexity figures are in
+> `perf/PERFORMANCE_LOG.md` (context in `perf/PERFORMANCE_CONTEXT.md`). The completed-run
+> leaderboards are below; the authoritative *new* evaluation protocol (audited metric tuple,
+> per-dataset, multi-seed) is in `papers/writing/EXPERIMENT_DESIGN.md`.
+
 ## What This Stage Means
 
 Model evaluation is the stage where the project stops asking, “can the model train?” and starts asking, “what exactly has the model learned, and how trustworthy is that result?”
@@ -478,3 +483,28 @@ Practical reporting implication:
 - but the thesis should explain clearly that the present completed `TMP` and `ST` evidence converges to one clip-based aggregation framework
 
 That is the evaluation truth the documentation should preserve right now.
+
+---
+
+## Appendix — Archived Experiment Surface (OLD framing)
+
+Folded in from the former `books/experiment_matrix.md`. This records the *experiment ID
+surface* of the 22 completed runs under the superseded image-vs-video framing. The video
+registry runners referenced here (`train.video.spa/tmp/st...`) are **archived** to
+`temp/legacy_models/train_video/`; kept here only as an accounting record. The authoritative
+current experiment plan is `papers/writing/EXPERIMENT_DESIGN.md`.
+
+**Image surface (`image_only`, single-frame spatial):**
+- `IMG-EXP-01..03` ViT · `04..06` ConvNeXt · `07..08` Swin · `09` DeiT · `10..11` ConvNeXtV2 · `12` MaxViT · `13..14` EVA
+- Scopes: `cifake`, `ai_gen`, `image_combined` (source train/test boundaries preserved, val carved from train).
+
+**Video surface (`video_only`, identity-aware split):**
+- Spatial `VID-SPA-01..11` (single sampled frame)
+- Temporal `VID-TMP-01..06` (contiguous clip)
+- Spatiotemporal `VID-ST-01..09` (07–09 = ConvLSTM / Hybrid Transformer / Hybrid TCN temporal-head variants, **not** native-video architectures); `VID-ST-10..12` were undefined/future.
+- Scopes: `celebdf`, `ffpp`, `video_combined`, `real_ai_videos`, `video_all`.
+
+**Reporting notes (old framing):** image and video reported as separate benchmark families;
+video distinguishes spatial / temporal / spatiotemporal; `frame_only` and `combined_aux`
+labeled as auxiliary/ablation only. As above, completed `TMP` and `ST` evidence converges to
+one clip-based aggregation framework.

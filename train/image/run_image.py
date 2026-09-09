@@ -20,7 +20,12 @@ from train.image.image_train import (
 DATASET_SCOPE_CHOICES = ["cifake", "ai_gen", "image_combined"]
 
 
-def build_image_run_config(experiment_no: str, dataset_scope: str, batch_size: int | None = None) -> dict:
+def build_image_run_config(
+    experiment_no: str,
+    dataset_scope: str,
+    batch_size: int | None = None,
+    seed: int | None = None,
+) -> dict:
     registry = get_image_experiment_registry()
     if experiment_no not in registry:
         raise ValueError(f"Unknown image experiment: {experiment_no}")
@@ -34,13 +39,19 @@ def build_image_run_config(experiment_no: str, dataset_scope: str, batch_size: i
     if batch_size is not None:
         config["batch_size"] = batch_size
 
-    config["run_name"] = f"{config['experiment_no']}_{config['model_name']}_{config['dataset_tag']}"
+    resolved_seed = seed if seed is not None else DEFAULT_SEED
+    run_name = f"{config['experiment_no']}_{config['model_name']}_{config['dataset_tag']}"
+    # Only suffix the run name when the seed differs from the default, so
+    # every existing completed-run path (all seed=42) stays unchanged.
+    if resolved_seed != DEFAULT_SEED:
+        run_name = f"{run_name}_seed{resolved_seed}"
+    config["run_name"] = run_name
     config["family_dir"] = FAMILY_DIR_NAMES.get(config["family"], config["family"])
     config["save_dir"] = str(Path("train") / "image" / config["family_dir"] / config["run_name"])
     config.update({
         "best_metric": "val_f1",
         "save_threshold": 0.80,
-        "seed": DEFAULT_SEED,
+        "seed": resolved_seed,
         "base_lr": 1e-4,
         "weight_decay": 1e-4,
         "min_lr": 1e-6,
@@ -59,6 +70,7 @@ def parse_args(argv=None):
     parser.add_argument("--exp", choices=sorted(get_image_experiment_registry()), help="Experiment ID.")
     parser.add_argument("--dataset-scope", choices=DATASET_SCOPE_CHOICES)
     parser.add_argument("--batch-size", type=int, default=None)
+    parser.add_argument("--seed", type=int, default=None, help="Override the default seed (42).")
     return parser.parse_args(argv)
 
 
@@ -77,10 +89,10 @@ def main(argv=None) -> None:
     args = parse_args(argv)
     exp = args.exp or prompt_choice("Choose image experiment", sorted(get_image_experiment_registry()))
     scope = args.dataset_scope or prompt_choice("Choose dataset scope", DATASET_SCOPE_CHOICES)
-    config = build_image_run_config(exp, scope, batch_size=args.batch_size)
+    config = build_image_run_config(exp, scope, batch_size=args.batch_size, seed=args.seed)
     with with_image_train_log(config):
         print("\nResolved run config")
-        for key in ("experiment_no", "family", "model_name", "dataset_scope", "dataset_names", "epochs", "batch_size", "base_lr", "save_dir"):
+        for key in ("experiment_no", "family", "model_name", "dataset_scope", "dataset_names", "epochs", "batch_size", "base_lr", "seed", "save_dir"):
             print(f"{key:<13}: {config[key]}")
         train_image_experiment(config)
 

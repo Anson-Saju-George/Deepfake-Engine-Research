@@ -230,7 +230,7 @@ Why this ordering is mandatory:
 
 What is not yet complete:
 
-- dedicated native-video backbone support for the reserved `VID-ST-07..12` range
+- dedicated native-video backbone support for `VID-ST-10..12` (undefined in the registry; `VID-ST-07..09` are active ConvLSTM/Hybrid Transformer/Hybrid TCN temporal-head variants, not native-video architectures)
 
 That distinction must remain explicit in documentation.
 
@@ -243,5 +243,5 @@ The training chapter should state clearly that:
 - the image family surface was updated to ViT, ConvNeXt, Swin, DeiT, ConvNeXtV2, MaxViT, and EVA
 - the active video research tree was reorganized into `spa`, `tmp`, and `st`
 - current video runners resolve ordered experiment IDs and execute a real timm-backed trainer for image-style video backbones
-- reserved native-video IDs `VID-ST-07..12` are intentionally inactive in the current runner surface
+- `VID-ST-07..09` (ConvLSTM/Hybrid Transformer/Hybrid TCN) are active with completed runs; only `VID-ST-10..12` remain undefined/future
 - raw-video-first methodology remains the intended main video path

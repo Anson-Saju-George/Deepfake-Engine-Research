@@ -4,6 +4,26 @@ This directory is the thesis-facing and journal-facing knowledge base for the re
 
 Its job is to translate repository truth into research logic without drifting away from the actual codebase.
 
+---
+
+> ## ⚠️ Direction notice — read before using these chapters for the paper
+>
+> **The authoritative research design is now `papers/writing/EXPERIMENT_DESIGN.md`** (bidirectional
+> cross-regime transfer: face-manipulation vs fully-synthetic video, whole-frame, audited).
+> It **supersedes** the older image-vs-video modality framing that most chapters below were
+> written under.
+>
+> When writing the new paper:
+> - **Direction / claims** → `papers/writing/EXPERIMENT_DESIGN.md` + `papers/writing/READING_LIST.md` (authoritative).
+> - **Project scope / layout** → root `PROJECT_CONTEXT.md`.
+> - **All performance numbers** (env, throughput, model complexity) → `perf/PERFORMANCE_LOG.md`, with context in `perf/PERFORMANCE_CONTEXT.md`.
+> - **The 22 completed runs below are the OLD framing** — archived evidence, at most a face-centric baseline. Do not reproduce the old thesis as the paper's contribution.
+>
+> These lifecycle chapters remain useful as method/background scaffolding and code-truth
+> reference, but every claim must be reconciled against `EXPERIMENT_DESIGN.md` first.
+
+---
+
 ## What This Directory Must Do
 
 Each file in `books/` should explain:
@@ -36,10 +56,11 @@ That standard matters because this project is intended to be:
 11. `11_monitoring_maintenance.md`
 12. `12_iteration_continuous_improvement.md`
 
-Companion audit documents:
+Companion audit document:
 
 - `research_notes.md`
-- `experiment_matrix.md`
+
+(The former `experiment_matrix.md` was folded into `08_model_evaluation.md` → "Archived Experiment Surface".)
 
 ## Current Repo Truth
 
@@ -48,16 +69,17 @@ At the current project state:
 - the active dataloader is `data/dataloader.py`
 - the active image training tree is `train/image/`
 - the active image registry is `train/image/image_models.py`
-- the active image command sheet is `train/image/image_commands.md`
-- the active video research registry is `train/video/video_models.py`
-- the active video command sheet is `train/video/video_commands.md`
-- the active raw-video smoke path is `train/video/simulate_video_train.py`
-- raw-video training remains the intended main video path
-- frame materialization remains auxiliary rather than mandatory
+- the **video trainer tree has been archived** to `temp/legacy_models/train_video/` (the new
+  design cuts the temporal-head sweep; `train/evaluate_all.py` still handles image runs and
+  treats video evaluation as optional)
+- under the new design, detection is **whole-frame** — frame materialization / face-cropping
+  from the old pipeline is legacy, not the intended path
 
-## Current Headline Findings
+## Headline Findings (OLD framing — archived evidence)
 
-The present documentation should be read with these validated results in mind:
+These are the completed-run results under the superseded image-vs-video framing. Full
+tables live in `books/08_model_evaluation.md`; all performance/complexity numbers in
+`perf/PERFORMANCE_LOG.md`. Treat as a baseline, not the new paper's contribution:
 
 - best completed image result:
   - `IMG-EXP-04` ConvNeXt-Base
@@ -73,7 +95,7 @@ Important current interpretation:
 - image detection is presently much easier than raw-video detection in this repository
 - CNN-style backbones currently outperform the completed transformer-family runs in both image and video results
 - the active `temporal` and `spatiotemporal` video branches currently converge to the same clip-based aggregation mechanics
-- reserved native-video IDs `VID-ST-07..12` remain future work rather than active evidence-bearing experiments
+- `VID-ST-07..09` (ConvLSTM/Hybrid Transformer/Hybrid TCN) are active evidence-bearing experiments with completed runs; only `VID-ST-10..12` remain future work
 
 ## Relationship To Other Docs
 
@@ -105,7 +127,7 @@ For onboarding:
 
 For experiment audit:
 
-- pair `research_notes.md` with `experiment_matrix.md`
+- pair `research_notes.md` with the "Archived Experiment Surface" appendix in `08_model_evaluation.md`
 
 For thesis or paper writing:
 

@@ -88,19 +88,19 @@ python -m data.image_video_frame --smoke-loader
 Materialize derived frame folders from dataloader-discovered videos:
 
 ```bash
-python -m proc.pre_process_videos
+python -m proc.pre.pre_process_videos
 ```
 
 Quick bounded smoke run:
 
 ```bash
-python -m proc.pre_process_videos --datasets celeb-df-v2 --max-frames 32 --limit 100
+python -m proc.pre.pre_process_videos --datasets celeb-df-v2 --max-frames 32 --limit 100
 ```
 
 Training-oriented derived frame extraction:
 
 ```bash
-python -m proc.pre_process_videos --max-frames 64
+python -m proc.pre.pre_process_videos --max-frames 64
 ```
 
 Important semantics:

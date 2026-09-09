@@ -1,0 +1,65 @@
+# requirements.txt — deepfake-detection pipeline (download -> preprocess -> train -> evaluate)
+#
+# Scope: covers every third-party import found across the active .py surface
+# (data/, proc/, train/, docs/code/, model_packer.py, profile_model_complexity.py,
+# upload_weights_to_hf.py). Deliberately EXCLUDES graphs/generate_research_graphs.py's
+# deps (matplotlib, pandas) -- the repo already keeps graphing in its own separate
+# `.graph-venv`, invoked as `.graph-venv/bin/python` (see docs/Results.md), and this
+# file follows that same separation rather than merging it in.
+#
+# No version pins by request -- always installs latest. Note: no dependency manifest
+# existed anywhere in this repo before this file (Current-Status.md S3), so there was
+# never a recorded "known-good" version set to pin against anyway. If a future
+# `pip install -U` ever breaks something, that's the tradeoff of going unpinned.
+
+# ---- core numerical / imaging ----
+numpy
+Pillow
+opencv-python                # cv2 -- used by data/dataloader.py, proc/*, data/*.py for
+                              # video decode (cv2.VideoCapture) and frame color conversion.
+                              # If running headless in WSL with no GUI needed, swap for
+                              # opencv-python-headless instead (same import name, smaller).
+
+# ---- deep learning ----
+torch
+torchvision
+timm                          # backbone zoo (ViT/ConvNeXt/ConvNeXtV2/Swin/DeiT/MaxViT/EVA/
+                              # Xception model names used across the experiment registries)
+
+# ---- video decode (optional backend) ----
+decord                        # data/dataloader.py wraps this in try/except (HAS_DECORD) --
+                              # NOT required for the active pipeline to run (default decode
+                              # backend is cv2, per books/research_notes.md), but install it
+                              # if you want the optional decord backend available.
+
+# ---- metrics / evaluation ----
+scikit-learn                  # sklearn.metrics used in train/eval_predictions_common.py,
+                              # train/image/image_train.py, docs/code/metrics.py
+scipy                         # scipy.stats.wilcoxon in docs/code/metrics.py
+
+# ---- utilities ----
+tqdm
+
+# ---- model profiling (optional -- profile_model_complexity.py only) ----
+# Both are lazy-imported with a try/except fallback (thop first, fvcore second);
+# neither is required for training or evaluation, only for regenerating
+# docs/MODEL_COMPLEXITY.md.
+thop
+fvcore
+
+# ---- Hugging Face upload (optional -- upload_weights_to_hf.py only) ----
+huggingface_hub
+
+# ---- face detection/alignment (proc/pre/extract_faces.py only) ----
+# RetinaFace via insightface -- chosen over MTCNN/dlib/MediaPipe for dense-enough
+# landmarks (docs/code/sbi.py's convex-hull blend mask needs them) and strong
+# detection on compressed/off-angle faces. GPU-native; onnxruntime-gpu needs a
+# CUDA-capable environment (matches the WSL/GPU setup already in use for training).
+insightface
+onnxruntime-gpu
+
+# ---- external system binaries (NOT pip-installable, install via apt in WSL) ----
+# data/dataloader.py shells out to `ffmpeg`/`ffprobe` (FFMPEG_BIN/FFPROBE_BIN env
+# vars, default "ffmpeg"/"ffprobe" on PATH) for the optional ffmpeg/ffmpeg_qsv/
+# ffmpeg_d3d11va decode backends and for video metadata probing.
+#   sudo apt update && sudo apt install -y ffmpeg

@@ -9,7 +9,7 @@ __pycache__/
 .venv/
 venv/
 env/
-
+.graph-venv
 # Jupyter
 .ipynb_checkpoints/
 
@@ -18,6 +18,9 @@ env/
 Thumbs.db
 .vscode/
 .idea/
+.cache/
+.agents/
+.claude/
 
 # Data and large generated assets
 datasets/images/ai-generated-images-vs-real-images/
