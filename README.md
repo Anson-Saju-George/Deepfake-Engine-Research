@@ -25,10 +25,10 @@ asymmetry) → genuine unification vs. two decision regions → survival under s
 | Doc | Role |
 |---|---|
 | **`PROJECT_CONTEXT.md`** (root) | whole-project scope, layout, caveats — start here |
-| **`papers/writing/PROJECT_VISION.md`** | why the problem matters (the vision) |
-| **`papers/writing/RESEARCH_QUESTIONS.md`** | the three RQs (the contribution) |
-| **`papers/writing/EXPERIMENT_DESIGN.md`** | the frozen experimental design (the *how*) — **authoritative** |
-| **`papers/writing/READING_LIST.md`** + `REFERENCES.bib` | tiered literature |
+| **`papers/writing/01_START_HERE/PROJECT_VISION.md`** | why the problem matters (the vision) |
+| **`papers/writing/01_START_HERE/RESEARCH_QUESTIONS.md`** | the three RQs (the contribution) |
+| **`papers/writing/01_START_HERE/EXPERIMENT_DESIGN.md`** | the frozen experimental design (the *how*) — **authoritative** |
+| **`papers/writing/02_references/READING_LIST.md`** + `REFERENCES.bib` | tiered literature |
 | **`perf/PERFORMANCE_LOG.md`** (+ `PERFORMANCE_CONTEXT.md`) | all measured performance numbers |
 
 > **Note on framing.** The image-vs-video modality framing that earlier versions of this repo

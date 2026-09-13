@@ -170,9 +170,35 @@ face-forgery detection.
 
 ---
 
-## 7. Metadata schema — required from day one
+## 7. Extraction architecture — adapters + a shared core
 
-`extract_frames.py` must be dataset-agnostic and record, per video:
+Each dataset is **wired differently** — directory layout, filename→identity/label mapping,
+how real vs fake is signalled, whether reals are in-set or borrowed from another dataset,
+native fps/resolution quirks. But the *actual* frame extraction and preprocessing is identical
+across all of them. So the extractor is **two layers, not one monolith**:
+
+**(a) Per-dataset adapter layer — the only dataset-specific code.** One small adapter per
+dataset whose sole job is to walk that dataset's real on-disk structure and emit a stream of
+**normalized `VideoRecord`s** conforming to the schema below. Each adapter owns:
+- enumerating video files under that dataset's layout
+- parsing filename/path → `identity`, `label`, `regime`, `manipulation_method`/`generator`, `split`
+- the real/fake rule for that dataset (and, where reals are borrowed, the `source_real_dataset` linkage — e.g. DeeperForensics reals = FF++ YouTube originals matched by target id, per §1's leakage rule)
+- any per-dataset fps / container / resolution normalization hints
+
+Adapters are written **after the dataset is on disk**, against its actual structure — not
+guessed up front.
+
+**(b) Shared core — dataset-agnostic, written once, reused by every adapter.** Takes a
+`VideoRecord` and does the invariant work:
+- decode (CPU `pyav` per `perf/PERFORMANCE_LOG.md`), **whole-frame, no face detection/cropping**
+- **duration + canonical codec re-encode** and resolution normalization (§3 — a hard preprocessing rule, so clip-length/codec can't become the shortcut VidAudit found)
+- frame sampling (native fps, stride, seq_len) and resize in the dataloader
+- write frames + a per-frame metadata row
+
+This keeps ~90% of the logic (the hard, correctness-critical part) in one tested place; adding
+a new dataset = writing one thin adapter, not touching the core.
+
+**Metadata schema — recorded per video/frame by the core, populated by the adapter:**
 
 ```
 video_id · dataset · regime · label · source_real_dataset · manipulation_method ·
@@ -198,9 +224,14 @@ F→Face, F→Synthetic, S→Synthetic, S→Face, U→all. That is the core matr
 Thumbnail probe · real-vs-real source probe · dataset-identity probe · second backbone
 (SigLIP) · balanced-vs-natural sampling ablation · optionally one temporal ablation.
 
-**Extraction order:** write a generic `extract_frames.py` FIRST, then
-FF++ → GenVideo (subsampled) → DeeperForensics → Celeb-DF → DeepAction.
-**Do not preprocess 500 GB before the experimental design is validated.**
+**Extraction order (per §7 architecture):**
+1. **Pull the dataset first**, then inspect its actual on-disk wiring.
+2. Write/verify that dataset's **thin adapter** against the real structure (emits normalized `VideoRecord`s).
+3. Run the **shared core** (decode → codec/duration normalize → sample → metadata). The core is built once, up front; only adapters are added per dataset.
+
+Dataset order: FF++ → GenVideo (subsampled) → DeeperForensics → Celeb-DF → DeepAction.
+**Do not preprocess 500 GB before the experimental design is validated** — validate the
+core + first adapters on a small slice, then scale.
 
 **Scope decision still open:** how many GenVideo videos to actually extract. 2.26M is not
 feasible here. Propose ~10–20k for the controlled comparison, plus the full OOD test split.

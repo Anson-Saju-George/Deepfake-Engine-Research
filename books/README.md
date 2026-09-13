@@ -8,13 +8,13 @@ Its job is to translate repository truth into research logic without drifting aw
 
 > ## ⚠️ Direction notice — read before using these chapters for the paper
 >
-> **The authoritative research design is now `papers/writing/EXPERIMENT_DESIGN.md`** (bidirectional
+> **The authoritative research design is now `papers/writing/01_START_HERE/EXPERIMENT_DESIGN.md`** (bidirectional
 > cross-regime transfer: face-manipulation vs fully-synthetic video, whole-frame, audited).
 > It **supersedes** the older image-vs-video modality framing that most chapters below were
 > written under.
 >
 > When writing the new paper:
-> - **Direction / claims** → `papers/writing/EXPERIMENT_DESIGN.md` + `papers/writing/READING_LIST.md` (authoritative).
+> - **Direction / claims** → `papers/writing/01_START_HERE/EXPERIMENT_DESIGN.md` + `papers/writing/02_references/READING_LIST.md` (authoritative).
 > - **Project scope / layout** → root `PROJECT_CONTEXT.md`.
 > - **All performance numbers** (env, throughput, model complexity) → `perf/PERFORMANCE_LOG.md`, with context in `perf/PERFORMANCE_CONTEXT.md`.
 > - **The 22 completed runs below are the OLD framing** — archived evidence, at most a face-centric baseline. Do not reproduce the old thesis as the paper's contribution.

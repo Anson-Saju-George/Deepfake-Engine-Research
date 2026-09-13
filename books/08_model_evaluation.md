@@ -3,7 +3,7 @@
 > **Numbers reference:** all throughput, latency, VRAM, and model-complexity figures are in
 > `perf/PERFORMANCE_LOG.md` (context in `perf/PERFORMANCE_CONTEXT.md`). The completed-run
 > leaderboards are below; the authoritative *new* evaluation protocol (audited metric tuple,
-> per-dataset, multi-seed) is in `papers/writing/EXPERIMENT_DESIGN.md`.
+> per-dataset, multi-seed) is in `papers/writing/01_START_HERE/EXPERIMENT_DESIGN.md`.
 
 ## What This Stage Means
 
@@ -492,7 +492,7 @@ Folded in from the former `books/experiment_matrix.md`. This records the *experi
 surface* of the 22 completed runs under the superseded image-vs-video framing. The video
 registry runners referenced here (`train.video.spa/tmp/st...`) are **archived** to
 `temp/legacy_models/train_video/`; kept here only as an accounting record. The authoritative
-current experiment plan is `papers/writing/EXPERIMENT_DESIGN.md`.
+current experiment plan is `papers/writing/01_START_HERE/EXPERIMENT_DESIGN.md`.
 
 **Image surface (`image_only`, single-frame spatial):**
 - `IMG-EXP-01..03` ViT · `04..06` ConvNeXt · `07..08` Swin · `09` DeiT · `10..11` ConvNeXtV2 · `12` MaxViT · `13..14` EVA

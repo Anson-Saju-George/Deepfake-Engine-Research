@@ -19,7 +19,7 @@ research paper — the `books/` directory is the structured context a paper-writ
 
 ## 2. Current research direction — AUTHORITATIVE
 
-**`papers/writing/EXPERIMENT_DESIGN.md` is the single authoritative design.** It supersedes the
+**`papers/writing/01_START_HERE/EXPERIMENT_DESIGN.md` is the single authoritative design.** It supersedes the
 older image-vs-video modality framing.
 
 > **New thesis:** Face manipulation and fully synthetic video are related but non-identical
@@ -34,8 +34,8 @@ Consequences that override older docs:
 - Audited metric tuple (AUROC + above-floor margin + recall@0.1%FPR + calibration), per-dataset never pooled, multi-seed + Wilcoxon.
 - The **old 22 runs are archived, not designed around** (at most 1–2 reruns as a face-centric baseline).
 
-Companion docs: `papers/writing/READING_LIST.md` (tiered literature), `papers/writing/REFERENCES.bib`,
-`papers/writing/DATASETS_FINAL.md`, `papers/writing/REVISION_AUDIT.md` (prior reviewer response).
+Companion docs: `papers/writing/02_references/READING_LIST.md` (tiered literature), `papers/writing/02_references/REFERENCES.bib`,
+`papers/writing/03_dataset_intel/DATASETS_FINAL.md`, `papers/writing/06_superseded/REVISION_AUDIT.md` (prior reviewer response).
 
 ---
 
@@ -58,8 +58,8 @@ fake/real counts, access status, and rejected candidates: **`proc/dataset_downlo
 | `proc/dataset_downloader/` | dataset registry (`DATASETS.md`) + download tooling |
 | `proc/code_snippets/` | reference implementations (metrics, splits, SBI, perturbations, complexity profiler) — relocated from the old `docs/code/` |
 | `perf/` | `PERFORMANCE_LOG.md` (numbers), `PERFORMANCE_CONTEXT.md` (how to read them), `CACHE_PERFORMANCE.md` |
-| `papers/writing/` | authored docs: `EXPERIMENT_DESIGN.md` (authoritative), `PROJECT_VISION.md`, `HANDOFF_PROMPT.md`, `READING_LIST.md`, `REFERENCES.bib`, `REVISION_AUDIT.md`, `DATASETS_FINAL.md` |
-| `papers/literature/` | external reference PDFs (DeepSpeak, DF40, ForgeryNet) |
+| `papers/writing/` | consolidated handoff bundle (read top-to-bottom): `README.md` index → `01_START_HERE/` (EXPERIMENT_DESIGN [authoritative], PROJECT_VISION, HANDOFF_PROMPT, RESEARCH_QUESTIONS) → `02_references/` (READING_LIST, REFERENCES.bib/.md) → `03_dataset_intel/` (DATASET_DECISIONS, FFPP_*, FORGERYNET_BRIEF, DATASETS_FINAL) → `05_provenance_prompts/` → `06_superseded/` (RESEARCH_PLAN, REVISION_AUDIT, revised docx). Plus `Deepfake-AI-Conversation.pdf` (Claude+ChatGPT session export). |
+| `papers/literature/` | 42 reference PDFs, tiered: `tier1_core/`, `tier2_methods/`, `tier3_reference/` |
 | `books/` | structured lifecycle chapters (01–12) — the paper-writing context |
 | `graphs/` | figure generator + rendered PNGs from the completed runs |
 | `temp/` | legacy checkpoints, superseded trainers, archived docs (`temp/legacy_docs/`, `temp/legacy_models/`) — archive, not active |

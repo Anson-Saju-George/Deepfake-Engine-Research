@@ -7,7 +7,17 @@ Fixes three problems in the previous setup:
   3. Adds bootstrap CIs + paired Wilcoxon, covering the reviewer's
      "no significance testing" objection without inventing new runs.
 
-Convention used throughout: label 1 == FAKE, label 0 == REAL.
+LABEL CONVENTION -- READ THIS FIRST
+-----------------------------------
+This module works internally in: **1 == FAKE, 0 == REAL**.
+
+The deep-fake-model repo uses the OPPOSITE convention in data/dataloader.py
+(DATASET_CONFIG: real=1, fake=0) and in train/eval_predictions_common.py
+(positive_label=1, positive_label_name="real").
+
+Mixing them produces silently wrong metrics -- no exception, just flipped
+numbers. ALWAYS convert at the boundary with to_dfx_labels() below, or pass
+repo_labels=True to evaluate().
 """
 from __future__ import annotations
 import numpy as np
@@ -17,6 +27,30 @@ from sklearn.metrics import (roc_auc_score, average_precision_score,
                              accuracy_score, balanced_accuracy_score,
                              confusion_matrix)
 from scipy.stats import wilcoxon
+
+
+# ----------------------------------------------------------------------
+# label-convention boundary
+# ----------------------------------------------------------------------
+REPO_REAL_LABEL = 1          # deep-fake-model: real=1, fake=0
+DFX_FAKE_LABEL = 1           # this module:     fake=1, real=0
+
+
+def to_dfx_labels(y_repo):
+    """Convert repo labels (real=1, fake=0) -> dfx labels (fake=1, real=0)."""
+    y = np.asarray(y_repo).astype(int).ravel()
+    bad = set(np.unique(y)) - {0, 1}
+    if bad:
+        raise ValueError(f"labels must be 0/1, got {sorted(bad)}")
+    return 1 - y
+
+
+def to_dfx_scores(p_real):
+    """Convert P(real) -> P(fake)."""
+    p = np.asarray(p_real, dtype=np.float64).ravel()
+    if p.min() < -1e-9 or p.max() > 1 + 1e-9:
+        raise ValueError("scores must be probabilities in [0,1]")
+    return 1.0 - p
 
 
 # ----------------------------------------------------------------------
@@ -96,8 +130,17 @@ class Report:
                 f"FR={self.fn_fake_real} FF={self.tp_fake_fake}")
 
 
-def evaluate(y_true, y_score, threshold=0.5):
-    """y_true: 1=fake 0=real. y_score: P(fake)."""
+def evaluate(y_true, y_score, threshold=0.5, repo_labels=False):
+    """Evaluate a set of predictions.
+
+    repo_labels=False (default): y_true is 1=FAKE/0=REAL, y_score is P(fake).
+    repo_labels=True:            y_true is 1=REAL/0=FAKE, y_score is P(real)
+                                 -- i.e. straight out of test_predictions.csv
+                                 (columns label / prob_real). Converted here.
+    """
+    if repo_labels:
+        y_true = to_dfx_labels(y_true)
+        y_score = to_dfx_scores(y_score)
     y_true = np.asarray(y_true).astype(int).ravel()
     y_score = np.asarray(y_score, dtype=np.float64).ravel()
     if y_true.shape != y_score.shape:
