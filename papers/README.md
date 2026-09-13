@@ -55,12 +55,16 @@ Every RQ is publishable in either outcome. **Run the transfer matrix before anyt
 - Metrics: **audited tuple** — video-level AUROC + above-floor margin + **recall @ 0.1% FPR** + calibration. **Report per-dataset, never a pooled headline.** Threshold frozen on train-domain val. Multi-seed (3) + Wilcoxon + bootstrap CIs.
 - Datasets: FF++ (face TRAIN) · GenVideo (synthetic TRAIN, subsample ~10-20k for the controlled comparison) · DeeperForensics/Celeb-DF (face OOD) · DeepAction (synthetic OOD, test-only). ForgeryNet **dropped** from core. DFDC **rejected**. Full registry: `proc/dataset_downloader/DATASETS.md` (+ `TODO.md`).
 
-## 6. Environment (CRITICAL — read `perf/PERFORMANCE_CONTEXT.md`)
+## 6. Environment — ALREADY BUILT & LOCKED (don't worry about setup; read `perf/PERFORMANCE_CONTEXT.md`)
 
-- Machine **`OMEN-MAX`**: RTX 5080 Laptop **16.3 GB** (`sm_120`), Core Ultra 7 255HX (20 cores), 63 GB RAM, Windows 11 + **WSL2 Ubuntu**. Invoke WSL from the Windows Bash tool: `wsl.exe -d Ubuntu -e bash -lc "…"`.
-- **`/opt/ml`** = lean **production/benchmark** venv (torch 2.11.0+cu129, cuDNN 9.17.1.4) — **NEVER install into or modify it**; benchmark reproducibility depends on it.
-- **`/opt/dev`** = full-stack AIML dev venv (`/opt/dev/bin/python`) — do experimental work here (torch cu129 + transformers/anthropic/openai/jupyter/fastapi/etc.). Jupyter kernel `opt-dev`.
-- **No passwordless sudo** — anything needing root, hand me the command to run.
+**You do NOT set up the environment — it's done.** Two WSL2 venvs on **`OMEN-MAX`** (RTX 5080
+Laptop **16.3 GB** `sm_120`, Core Ultra 7 255HX 20-core, 63 GB RAM, Win 11 + WSL2 Ubuntu).
+Invoke WSL from the Windows Bash tool: `wsl.exe -d Ubuntu -e bash -lc "…"`.
+
+- **`/opt/ml` — FROZEN production/training env. RUN the ML pipeline here, do NOT install into it.** Its perf-critical stack is **locked** (benchmark reproducibility depends on it): torch **2.11.0+cu129**, torchvision 0.26.0+cu129, torchaudio 2.11.0+cu129, **cuDNN 9.17.1.4**, opencv 4.13.0.92, numpy 2.5.1, timm 1.0.28. Interpreter: `/opt/ml/bin/python`. (Pinned set: `requirements.lock.txt`.)
+- **`/opt/dev` — the install target for EVERYTHING new.** Full-stack AIML dev venv (`/opt/dev/bin/python`; torch cu129 + transformers / anthropic / openai / jupyter / fastapi / …; kernel `opt-dev`). **Any library you need — graphing, extraction utils, anything — install it here** via `/opt/dev/bin/pip install`, never into `/opt/ml`.
+- **Conflict rule:** if a task genuinely needs a lib *inside* `/opt/ml`, or a version change to the locked stack, **STOP and escalate to me** — never mutate the frozen env yourself.
+- **Elevated access:** no passwordless sudo. Anything needing root (apt, `/opt` dir creation, WSL VHDX compaction) → hand me the exact command to run; I'll run it.
 - **Winning training knobs (measured, `perf/PERFORMANCE_LOG.md`):** AMP **bf16** · batch **4** · workers **12** · seq_len **16** · **pyav** CPU decode · cache on **F:**. `torch.compile` OFF, `channels_last` OFF.
 - **⚠ Silent VRAM cliff:** past ~16.3 GB (batch ≥12, or seq32/batch4) WSL/WDDM spills to RAM — ~16× slowdown, **no OOM error**. Tune with this in mind.
 
