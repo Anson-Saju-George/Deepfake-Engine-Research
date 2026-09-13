@@ -77,10 +77,14 @@ Invoke WSL from the Windows Bash tool: `wsl.exe -d Ubuntu -e bash -lc "…"`.
 
 ## 8. Codex — your peer collaborator (USE IT)
 
-Codex (OpenAI, `gpt-5.6-sol`) is installed as a **peer agent**, not a tool. Pull it in for
+Codex (OpenAI) is installed as a **peer agent**, not a tool. Pull it in for
 design/architecture/critical decisions and adversarial review — tell it to **fight, not
 flatter**; announce every call (each spends usage); the stop-time **review gate stays OFF**
 unless I ask. Commands: `/codex:review`, `/codex:adversarial-review` (steerable), `/codex:rescue <task>`, `/codex:status|result|cancel`, `/codex:transfer`, plus the `codex:codex-rescue` subagent.
+
+> **Model for THIS project: `gpt-6-astra`** — set as a per-project override in the repo's
+> `.codex/config.toml` (overrides the global `gpt-5.6-sol` default). Use `gpt-6-astra` for every
+> Codex call in this research; pass `--model gpt-6-astra` explicitly if a command needs it.
 
 > **IMMEDIATE NEXT ACTION:** before writing any code, **convene a Codex adversarial review** of
 > the **extraction architecture (`EXPERIMENT_DESIGN.md §7`)** and the **three RQs** — poke holes

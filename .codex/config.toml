@@ -1,0 +1,3 @@
+# Per-project Codex config for the deepfake cross-regime detection research.
+# Overrides the global ~/.codex/config.toml default (gpt-5.6-sol) for THIS repo only.
+model = "gpt-6-astra"
